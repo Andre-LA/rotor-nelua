@@ -1,11 +1,11 @@
 # Rotor
 
-Rotor is a set of libraries for doing ECS in [Lua][lua-org].
+Rotor is a set of libraries for doing ECS in [Nelua][nelua-website].
 
 Most libraries do one specific thing and can be used for any purpose.
 
-Check [example.lua][example-file] and also the [tests][tests-dir].
+Check [example.nelua][example-file].
 
-[example-file]: example.lua
-[tests-dir]: spec/
-[lua-org]: https://lua.org/ "lua.org"
+[example-file]: example.nelua
+[nelua-website]: https://edubart.github.io/nelua-lang/ "nelua's website"
+                                                                   
