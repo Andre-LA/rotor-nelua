@@ -2,10 +2,10 @@
 
 Rotor is a set of libraries for doing ECS in [Nelua][nelua-website].
 
-Most libraries do one specific thing and can be used for any purpose.
+_Note: I'm still learning Nelua (and even C), so problably there are some things I'm doing in the wrong way :s_
 
 Check [example.nelua][example-file].
 
 [example-file]: example.nelua
-[nelua-website]: https://edubart.github.io/nelua-lang/ "nelua's website"
+[nelua-website]: https://nelua.io/ "nelua's website"
                                                                    
