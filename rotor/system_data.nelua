@@ -1,0 +1,119 @@
+## if not SYSTEMDATA_ALREADY_REQUIRED then
+   ## local SYSTEMDATA_ALREADY_REQUIRED = true
+
+   require 'buildstatus'
+   ## buildstatus.open 'requiring system_data'
+
+   require "rotor.bitset_array"
+   require "rotor.entity"
+   require "rotor.rat"
+   require "rotor.storage"
+
+   local function union(a: arraytable(BitsetArray), b: arraytable(BitsetArray)): arraytable(BitsetArray)
+      local result: arraytable(BitsetArray);
+      local a_len = #a
+
+      for i = 1_u, a_len do
+         result[i] = a[i]
+      end
+      for i = 1_u, #b do
+         result[i+a_len] = b[i]
+      end
+      return result
+   end
+
+   global SystemData = @record{
+      mask: BitsetArray,
+      mask_write: BitsetArray,
+      required_storages: arraytable(BitsetArray),
+      components_indexes: arraytable(arraytable(GenerationalIndex)),
+      available_indexes: Rat, --uinteger :: PAREI AQUI, era arraytable(uinteger), mas tem que mudar pra Rat por conta de uso de Pop:::
+   }
+
+   function SystemData.new (read_components: arraytable(BitsetArray), write_components: arraytable(BitsetArray)): SystemData
+      local mask_read: BitsetArray;
+      local mask_write: BitsetArray;
+
+      for i = 1_u, #read_components do
+         mask_read = bitset_array.bor(mask_read, read_components[i])
+      end
+      for i = 1_u, #write_components do
+         mask_write = bitset_array.bor(mask_write, write_components[i])
+      end
+
+      local new_system_data: SystemData;
+      new_system_data.mask = bitset_array.bor(mask_read, mask_write)
+      new_system_data.mask_write = mask_write
+      new_system_data.required_storages = union(read_components, write_components)
+
+      return new_system_data
+   end
+
+   local function collect_components (system_data_p: pointer(SystemData), entity_i_p: pointer(Entity)): arraytable(GenerationalIndex)
+      local components_tuple: arraytable(GenerationalIndex)
+      local n = 0_u
+
+      local system_data = $system_data_p
+      local entity_i = $entity_i_p
+
+      -- for each required storage, insert the components indexes respectively
+      for i = 1_u, (@uinteger)(#system_data.required_storages) do
+         for j = 1_u, entity_i.associated_storages.count do
+            local entity_i_associated_storages_j_ptr = (@BitsetArray*)(entity_i.associated_storages:get_ptr(j))
+
+            if bitset_array.equals(system_data.required_storages[i], $entity_i_associated_storages_j_ptr) then
+               n = n + 1
+               local entity_i_associated_components_i_ptr = (@GenerationalIndex*)(entity_i.associated_components:get_ptr(i))
+               components_tuple[n] = $entity_i_associated_components_i_ptr
+               break
+            end
+         end
+      end
+
+      return components_tuple
+   end
+
+   function SystemData:update (entities_storage_ptr: pointer(Storage), untracked_ids: arraytable(GenerationalIndex))
+      local entities_storage = $entities_storage_ptr
+
+      for i = 1_u, #untracked_ids do
+         local entity_id = untracked_ids[i]
+         local possible_i_entity = entities_storage:get_entry(entity_id)
+
+         if possible_i_entity:can_get_value() then -- this is a new entity
+            local i_entity_ptr = (@Entity*)(possible_i_entity:get_value())
+            local i_entity: Entity = $i_entity_ptr
+
+            local masks_intersection = bitset_array.band(i_entity.mask, self.mask)
+
+            if bitset_array.equals(masks_intersection, self.mask) then
+               local idx_to_insert: uinteger = 0_u
+
+               local available_indexes_len = self.available_indexes.count
+               if available_indexes_len > 0_u then
+                  local idx_to_insert_ptr = (@uinteger*)(self.available_indexes:get_ptr(available_indexes_len))
+                  idx_to_insert = $idx_to_insert_ptr
+                  self.available_indexes:pop()
+               else
+                  idx_to_insert = (@uinteger)(#self.components_indexes) + 1_u
+               end
+
+               self.components_indexes[idx_to_insert] = collect_components(self, &i_entity)
+            end
+         end
+      end
+   end
+
+   function SystemData:mark_available (idx: uinteger)
+      local new_available_idx_ptr = (@uinteger*)(self.available_indexes:push(#@uinteger))
+      $new_available_idx_ptr = idx;
+
+      local compidx_novalue: arraytable(GenerationalIndex) = {}
+      self.components_indexes[idx] = compidx_novalue
+   end
+
+--[==[
+--]==]
+
+   ## buildstatus.close 'system_data required'
+## end

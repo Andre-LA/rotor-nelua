@@ -1,0 +1,34 @@
+## if not OPTIONALS_Opt_Rat_GenerationalIndex_ALREADY_REQUIRED then --[
+   ## OPTIONALS_Opt_Rat_GenerationalIndex_ALREADY_REQUIRED = true
+   require 'buildstatus'
+   ## buildstatus.print('requiring optionals.Rat_GenerationalIndex')
+
+   require 'rotor.generational_index'
+   require 'rotor.rats'
+   require 'rotor.rats.GenerationalIndex'
+
+   global Opt_Rat_GenerationalIndex = @record{
+      value: Rat_GenerationalIndex,
+      not_nil: boolean
+   }
+
+   function Opt_Rat_GenerationalIndex:can_get_value() : boolean
+      return self.not_nil
+   end
+   function Opt_Rat_GenerationalIndex:get_value(): Rat_GenerationalIndex
+      assert(self:can_get_value(), 'assert error on a optional: cannot get the value because is considered as nil')
+      return self.value
+   end
+   function Opt_Rat_GenerationalIndex:set_value(newvalue: Rat_GenerationalIndex)
+      self.value = newvalue
+      self.not_nil = true
+   end
+   function Opt_Rat_GenerationalIndex:set_nil()
+      local resetvalue: Rat_GenerationalIndex;
+      self.value = resetvalue
+      self.not_nil = false
+   end
+
+   ## buildstatus.print('optionals.Rat_GenerationalIndex required')
+
+## end --]

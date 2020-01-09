@@ -1,0 +1,10 @@
+## nohashcodenames = true
+
+## cinclude '<stdlib.h>'
+## cinclude '<stdio.h>'
+
+local function malloc (size: csize): pointer <cimport 'malloc', nodecl> end
+local function free (ptr: pointer): void <cimport 'free', nodecl> end
+local function getchar(): cint <cimport 'getchar', nodecl> end
+
+require 'mystring'

@@ -1,0 +1,47 @@
+##[[ 
+if not BUILDSTATUS then
+   BUILDSTATUS = true
+   
+   local levels = 0
+   
+   local function gen_pre()
+      local pre = ''
+      for i=1, levels do
+         pre = pre .. '   '
+      end
+      return pre
+   end
+   
+   local function bs_print(...)
+      t = {...}   
+      print(gen_pre() .. table.concat(t, ', '))
+   end
+   
+   buildstatus = {
+      should_print = true,
+      print = bs_print,
+      open = function(...)
+         bs_print(...)
+         levels = levels + 1
+      end,
+      close = function(...)
+         if levels > 0 then
+            levels = levels - 1
+         end
+         bs_print(...)
+      end,
+   }
+end 
+]]
+
+##[[ 
+local TESTS = false
+if TESTS then
+   buildstatus.print("hello")
+   buildstatus.open("opening1")
+   buildstatus.open("opening2")
+   buildstatus.print("printing2")
+   buildstatus.close("closing2")
+   buildstatus.close("closing1")
+end
+]]

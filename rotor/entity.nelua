@@ -1,0 +1,100 @@
+## if not ENTITY_ALREADY_REQUIRED then
+   require 'buildstatus'
+   ## buildstatus.open 'requiring entity'
+
+   ## ENTITY_ALREADY_REQUIRED = true
+
+   require "rotor.bitset_array"
+   require "rotor.generational_index"
+
+   require 'rotor.optionals'
+   require 'rotor.optionals.uinteger'
+   require 'rotor.rat'
+
+   global Entity = @record {
+      associated_components: Rat, -- of GenerationalIndex,
+      associated_storages: Rat, -- of BitsetArray,
+      mask: BitsetArray,
+      untracked: boolean
+   }
+
+   function Entity.new(): Entity
+      local new_entity = (@Entity){
+         associated_components = {},
+         associated_storages = {},
+         mask = bitset_array.new(0, {0}),
+         untracked = true,
+      }
+      return new_entity
+   end
+
+
+   function Entity:get_component_index(component_gen_idx: GenerationalIndex): Opt_uinteger
+      local result: Opt_uinteger;
+
+      for i = 1_u, self.associated_components.count do
+         local i_associated_component_ptr = (@GenerationalIndex*)(self.associated_components:get_ptr(i))
+         local i_associated_component = $i_associated_component_ptr
+
+         if GenerationalIndex.equals(i_associated_component, component_gen_idx) then
+            result:set_value(i)
+         end
+      end
+
+      return result
+   end
+
+   function Entity:get_storage_index(storage_mask: BitsetArray): Opt_uinteger
+      local result: Opt_uinteger;
+
+      for i = 1_u, self.associated_storages.count do
+         local i_associated_storage_ptr = (@BitsetArray*)(self.associated_storages:get_ptr(i))
+         local i_associated_storage = $i_associated_storage_ptr
+
+         if bitset_array.equals(i_associated_storage, storage_mask) then
+            result:set_value(i)
+         end
+      end
+
+      return result
+   end
+
+   function Entity:associate(component_gen_idx: GenerationalIndex, storage_mask: BitsetArray)
+      self.mask = bitset_array.bor(self.mask, storage_mask)
+
+      local new_associated_component_ptr = (@GenerationalIndex*)(self.associated_components:push(#@GenerationalIndex))
+      $new_associated_component_ptr = component_gen_idx
+
+      local new_associated_storage_ptr = (@BitsetArray*)(self.associated_storages:push(#@BitsetArray))
+      $new_associated_storage_ptr = storage_mask
+   end
+
+   function Entity:disassociate(possible_index: Opt_uinteger): boolean
+      if possible_index:can_get_value() then
+         local index = possible_index:get_value()
+
+         local i_associated_storage_ptr = (@BitsetArray*)(self.associated_storages:get_ptr(index))
+         local i_associated_storage = $i_associated_storage_ptr
+
+         self.mask = bitset_array.band(self.mask, bitset_array.bnot(i_associated_storage))
+         self.associated_components:remove(index)
+         self.associated_storages:remove(index)
+
+         return true
+      else
+         return false
+      end
+   end
+
+   function Entity:disassociate_by_component(component_gen_idx: GenerationalIndex): boolean
+      local possible_index = self:get_component_index(component_gen_idx)
+      return self:disassociate(possible_index)
+   end
+
+   function Entity:disassociate_by_storage(storage_mask: BitsetArray): boolean
+      local possible_index = self:get_storage_index(storage_mask)
+      return self:disassociate(possible_index)
+   end
+
+   ## buildstatus.close 'entity required'
+## end

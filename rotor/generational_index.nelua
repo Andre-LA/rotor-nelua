@@ -1,0 +1,26 @@
+## if not GENERATIONALINDEX_ALREADY_REQUIRED then
+   ## GENERATIONALINDEX_ALREADY_REQUIRED = true
+   
+   require 'buildstatus'
+   ## buildstatus.open 'requiring generational_index'
+   
+   global GenerationalIndex = @record {
+      index: uinteger,
+      generation: uinteger
+   }
+
+   function GenerationalIndex.new(idx: uinteger, gen: uinteger): GenerationalIndex  
+      local new_generational_index = (@GenerationalIndex){index = idx, generation = gen};
+      return new_generational_index
+   end
+
+   function GenerationalIndex:equals(other_gidx: GenerationalIndex): boolean
+      return self.index == other_gidx.index and self.generation == other_gidx.generation
+   end
+
+   function GenerationalIndex:copy(gidx_to_copy: GenerationalIndex): GenerationalIndex
+      return GenerationalIndex.new(gidx_to_copy.index, gidx_to_copy.generation)
+   end
+      
+   ## buildstatus.close 'generational_index required'
+## end

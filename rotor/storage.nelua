@@ -1,0 +1,130 @@
+## if not STORAGE_ALREADY_REQUIRED then
+   ## STORAGE_ALREADY_REQUIRED = true
+
+   require 'buildstatus'
+   ## buildstatus.print('requiring rotor.storage')
+
+   require ('rotor.generational_index')
+   require ('rotor.optionals')
+   require ('rotor.optionals.uinteger')
+   require ('rotor.optionals.pointer')
+   require ('rotor.rat')
+
+
+   global Storage = @record{
+      next_free_ids: Rat, -- Rat(GenerationalIndex)
+      entries: arraytable(pointer),
+      generations: arraytable(Opt_uinteger),
+      len: uinteger
+   }
+
+   local function is_valid_entry(storage_ptr: pointer(Storage), gen_idx: GenerationalIndex): boolean
+      local storage = $storage_ptr
+      local genvalue = storage.generations[gen_idx.index]
+
+      if not genvalue:can_get_value() then
+         return false
+      elseif gen_idx.generation ~= genvalue:get_value() then
+         return false
+      end
+      return true
+   end
+
+   function Storage.new(): Storage
+      local newstorage: Storage;
+      local gen_idx_ptr = (@GenerationalIndex*)(newstorage.next_free_ids:push(#@GenerationalIndex))
+      $gen_idx_ptr = GenerationalIndex.new(1, 0)
+      return newstorage
+   end
+
+   function Storage:new_entry(entry_content_ptr: pointer): GenerationalIndex
+      local last_index = self.next_free_ids.count - 1
+      local last_free_id_ptr = (@GenerationalIndex*)(self.next_free_ids:get_ptr(last_index))
+      local last_free_id = $last_free_id_ptr
+
+      print ('before self.entries[', last_free_id.index, ']; ')
+      self.entries[last_free_id.index] = entry_content_ptr
+      print ('ok')
+
+      local gennewvalue: Opt_uinteger;
+      gennewvalue:set_value(last_free_id.generation)
+
+      print ('before self.generations[', last_free_id.index, ']; ')
+      self.generations[last_free_id.index] = gennewvalue
+      print ('ok')
+
+      if last_free_id.index > self.len then
+         self.len = last_free_id.index
+         last_free_id.index = last_free_id.index + 1
+         last_free_id.generation = 0
+      else
+         self.next_free_ids:pop()
+      end
+
+      $last_free_id_ptr = last_free_id
+
+      -- return a copy of the gen_idx of this new entry
+      return GenerationalIndex.new(last_free_id.index, last_free_id.generation)
+   end
+
+   function Storage:get_entry(gen_idx: GenerationalIndex): Opt_pointer
+      local result: Opt_pointer
+
+      if not is_valid_entry(self, gen_idx) then
+         return result
+      end
+
+      result:set_value(self.entries[gen_idx.index])
+      return result
+   end
+
+   function Storage:remove_entry(gen_idx: GenerationalIndex): boolean
+      local ok = self:get_entry(gen_idx)
+
+      if not ok:can_get_value() then
+         return false
+      end
+
+      local ptr2nothing: pointer = nilptr
+      self.entries[gen_idx.index] = ptr2nothing
+
+      local gennewvalue = self.generations[gen_idx.index]
+      gennewvalue:set_nil()
+      self.generations[gen_idx.index] = gennewvalue
+
+      if gen_idx.index == self.len then
+         local last_i = 0_u
+         for i=1_u, self.len do
+            local genvalue = self.generations[i]
+            if genvalue:can_get_value() then
+               last_i = i
+            end
+         end
+         self.len = last_i
+      end
+
+      local next_free_id_ptr = (@GenerationalIndex*)(self.next_free_ids:push(#@GenerationalIndex))
+      $next_free_id_ptr = GenerationalIndex.new(gen_idx.index, gen_idx.generation + 1)
+
+      return true
+   end
+
+   --Iterators are NYI feature",
+   --function " .. storagetypename .. ".iterate_entries(storage)",
+      --local i, entries_len, entry_id = 0, storage.len, new_id(0, 0)",
+--
+      --return function ()",
+         --local ok_entry;",
+--
+         --while ok_entry == nil and i < entries_len do",
+            --i = i + 1",
+            --entry_id.index, entry_id.generation = i, (storage.generations[i] or -1)",
+            --ok_entry = " .. storagetypename .. ".get_entry(storage, entry_id)",
+         --end",
+--
+         --return ok_entry, entry_id",
+      --end",
+   --end",
+
+   ## buildstatus.print('rotor.storage required')
+## end

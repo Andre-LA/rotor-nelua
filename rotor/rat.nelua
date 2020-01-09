@@ -1,0 +1,98 @@
+-- RAT: Rotor's Array Table
+
+## if not RAT_ALREADY_REQUIRED then --[
+   ## RAT_ALREADY_REQUIRED = true
+
+   require  'buildstatus'
+   ## buildstatus.open 'requiring rotor.rat'
+
+   ## cinclude '<stdlib.h>'
+
+   local function malloc (size: csize): pointer <cimport 'malloc', nodecl> end
+   local function free (ptr: pointer): void <cimport 'free', nodecl> end
+
+   global Rat = @record{
+      pointers: arraytable(pointer),
+      count: uinteger,
+   }
+
+   local function free_rat_entry(rat_ptr: Rat*, idx: uinteger)
+      local last_ptr = ($rat_ptr).pointers[($rat_ptr).count]
+      free(last_ptr)
+      local novalue: pointer = nilptr;
+      ($rat_ptr).pointers[($rat_ptr).count] = novalue
+   end
+
+   local function malloc_rat_entry(rat_ptr: Rat*, idx: uinteger, size: csize): pointer
+      local ptr_val = malloc(size)
+      local rat = $rat_ptr
+      rat.pointers[rat.count] = ptr_val
+      $rat_ptr = rat
+      return ptr_val
+   end
+
+   function Rat:push (size: csize): pointer
+      local ptr_val = malloc_rat_entry(self, self.count, size)
+      self.count = self.count + 1
+      return ptr_val
+   end
+
+   function Rat:pop ()
+      self.count = self.count - 1
+      free_rat_entry(self, self.count)
+   end
+
+   function Rat:insert(idx: uinteger, size: csize)
+      local novalue: pointer = nilptr;
+      self.pointers[self.count] = novalue -- just to grow the arraytable
+      self.count = self.count + 1
+
+      for i = (@integer)(self.count), (@integer)(idx + 1_u), -1_i do
+         self.pointers[i] = self.pointers[i-1]
+      end
+      malloc_rat_entry(self, idx, size)
+   end
+
+   function Rat:remove(idx: uinteger)
+      for i = idx, < self.count do
+         self.pointers[i] = self.pointers[i+1]
+      end
+      self:pop()
+   end
+
+   function Rat:get_ptr (i: uinteger): pointer
+      assert(i < self.count, "index should be < self.count")
+      return self.pointers[i]
+   end
+
+   function Rat:set_ptr(i: uinteger)
+
+   end
+
+   function Rat:free_ptr(i: uinteger)
+   end
+
+   ## buildstatus.close 'rotor.rat required'
+## end --]
+---- testes!
+--## if true then -- disable this if you don't want to test
+   --local myrat: Rat;
+--
+   --getchar()
+   --local len: integer <const> = 1024*32
+--
+   --print ('pushing', len, 'tamanho provavel:', #@tipoteste, (#@tipoteste)*len)
+   --for i = 0, len do
+      --local vl_ptr = (@tipoteste*)(myrat:push(#@tipoteste))
+      --$vl_ptr = (@tipoteste){data = i, name = "aaa"}
+   --end
+--
+   --getchar()
+   --print ('freeing', myrat.count-1)
+   --for i = 0_u, <myrat.count do
+      --myrat:pop()
+   --end
+--
+   --getchar()
+--## end
+

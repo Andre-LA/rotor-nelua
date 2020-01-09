@@ -1,0 +1,30 @@
+## if not OPTIONALS_Opt_Position_ALREADY_REQUIRED then --[
+   ## OPTIONALS_Opt_Position_ALREADY_REQUIRED = true
+   require 'buildstatus'
+   ## buildstatus.print('requiring optionals.Position')
+
+   global Opt_Position = @record{
+      value: Position,
+      not_nil: boolean
+   }
+
+   function Opt_Position:can_get_value() : boolean
+      return self.not_nil
+   end
+   function Opt_Position:get_value(): Position
+      assert(self:can_get_value(), 'assert error on a optional: cannot get the value because is considered as nil')
+      return self.value
+   end
+   function Opt_Position:set_value(newvalue: Position)
+      self.value = newvalue
+      self.not_nil = true
+   end
+   function Opt_Position:set_nil()
+      local resetvalue: Position;
+      self.value = resetvalue
+      self.not_nil = false
+   end
+
+   ## buildstatus.print('optionals.Position required')
+
+## end --]
