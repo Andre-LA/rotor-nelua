@@ -9,11 +9,11 @@
 
    require 'rotor.optionals'
    require 'rotor.optionals.uinteger'
-   require 'rotor.rat'
+   require 'nstd.nlists.nlinkedlist'
 
    global Entity = @record {
-      associated_components: Rat, -- of GenerationalIndex,
-      associated_storages: Rat, -- of BitsetArray,
+      associated_components: nLinkedList, -- nLinkedList(GenerationalIndex),
+      associated_storages: nLinkedList, -- nLinkedList(BitsetArray),
       mask: BitsetArray,
       untracked: boolean
    }
@@ -32,8 +32,8 @@
    function Entity:get_component_index(component_gen_idx: GenerationalIndex): Opt_uinteger
       local result: Opt_uinteger;
 
-      for i = 1_u, self.associated_components.count do
-         local i_associated_component_ptr = (@GenerationalIndex*)(self.associated_components:get_ptr(i))
+      for i = 0_u, < self.associated_components.length do
+         local i_associated_component_ptr = (@GenerationalIndex*)(self.associated_components:get_data_ptr(i))
          local i_associated_component = $i_associated_component_ptr
 
          if GenerationalIndex.equals(i_associated_component, component_gen_idx) then
@@ -47,8 +47,8 @@
    function Entity:get_storage_index(storage_mask: BitsetArray): Opt_uinteger
       local result: Opt_uinteger;
 
-      for i = 1_u, self.associated_storages.count do
-         local i_associated_storage_ptr = (@BitsetArray*)(self.associated_storages:get_ptr(i))
+      for i = 0_u, < self.associated_storages.length do
+         local i_associated_storage_ptr = (@BitsetArray*)(self.associated_storages:get_data_ptr(i))
          local i_associated_storage = $i_associated_storage_ptr
 
          if bitset_array.equals(i_associated_storage, storage_mask) then
@@ -73,7 +73,7 @@
       if possible_index:can_get_value() then
          local index = possible_index:get_value()
 
-         local i_associated_storage_ptr = (@BitsetArray*)(self.associated_storages:get_ptr(index))
+         local i_associated_storage_ptr = (@BitsetArray*)(self.associated_storages:get_data_ptr(index))
          local i_associated_storage = $i_associated_storage_ptr
 
          self.mask = bitset_array.band(self.mask, bitset_array.bnot(i_associated_storage))

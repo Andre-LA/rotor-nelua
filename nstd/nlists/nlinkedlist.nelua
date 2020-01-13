@@ -101,7 +101,22 @@
       self.length = self.length - 1
    end
 
-   function nLinkedList:get_node_data(index: uinteger): pointer
+   function nLinkedList:push(size: csize): pointer
+      local ptr = self:insert(self.length, size)
+      return ptr
+   end
+
+   function nLinkedList:pop()
+      self:remove(self.length - 1)
+   end
+
+   function nLinkedList:clear()
+      for i = 0_u, < self.length do
+         self:remove(0_u)
+      end
+   end
+
+   function nLinkedList:get_data_ptr(index: uinteger): pointer
       assert(index <= self.length, "1st argument 'index' should be <= of 'length' of list")
 
       local nodes = get_nodes(self, index)
@@ -110,7 +125,7 @@
    end
 ## end --]
 
-## if not NLINKEDLIST and false then -- if (should test) then [
+## if not NLINKEDLIST and true then -- if (should test) then [
    local Person = @record {name: string, age: uinteger}
    local mylist = nLinkedList.new()
 
@@ -119,14 +134,17 @@
    local names: array(string , 3) = {"Fulano", "Fulana", "ZeDaSilva"}
    local ages: array(uinteger, 3) = {20      , 22      , 46         }
 
-   for i = 0_u, < (@uinteger)(#names) do
+   local name_ptr = (@Person*)(mylist:push(#@Person))
+   $name_ptr = (@Person){name = names[0], age = ages[0]}
+
+   for i = 1_u, < (@uinteger)(#names) do
       local name_ptr = (@Person*)(mylist:insert(i, #@Person))
       $name_ptr = (@Person){name = names[i], age = ages[i]}
    end
 
    assert((@uinteger)(#names) == mylist.length)
    for i = 0_u, < mylist.length do
-      local person_ptr = (@Person*)(mylist:get_node_data(i))
+      local person_ptr = (@Person*)(mylist:get_data_ptr(i))
 
       local name = ($person_ptr).name
       local age = ($person_ptr).age
@@ -138,7 +156,7 @@
    mylist:remove(1_u)
 
    for i = 0_u, < mylist.length do
-      local person_ptr = (@Person*)(mylist:get_node_data(i))
+      local person_ptr = (@Person*)(mylist:get_data_ptr(i))
 
       local name = ($person_ptr).name
       local age = ($person_ptr).age

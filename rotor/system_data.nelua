@@ -6,18 +6,25 @@
 
    require "rotor.bitset_array"
    require "rotor.entity"
-   require "rotor.rat"
    require "rotor.storage"
+   require "nstd.nlists.nlinkedlist"
 
-   local function union(a: arraytable(BitsetArray), b: arraytable(BitsetArray)): arraytable(BitsetArray)
-      local result: arraytable(BitsetArray);
-      local a_len = #a
+   -- : (a: nLinkedList(BitsetArray), b: nLinkedList(BitsetArray)): nLinkedList(BitsetArray)
+   local function union(a: nLinkedList, b: nLinkedList): nLinkedList
+      local result = nLinkedList.new()
+      local a_len = a.length
 
-      for i = 1_u, a_len do
-         result[i] = a[i]
+      for i = 0_u, < a_len do
+         local v = (@BitsetArray*)(result:push(#@BitsetArray))
+         local a_ptr = (@BitsetArray*)(a:get_data_ptr(i))
+         local a_val: BitsetArray = $a_ptr
+         $v = bitset_array.copy(a_val)
       end
-      for i = 1_u, #b do
-         result[i+a_len] = b[i]
+      for i = 0_u, < b.length do
+         local v = (@BitsetArray*)(result:push(#@BitsetArray))
+         local b_ptr = (@BitsetArray*)(b:get_data_ptr(i))
+         local b_val: BitsetArray = $b_ptr
+         $v = bitset_array.copy(b_val)
       end
       return result
    end
@@ -25,20 +32,25 @@
    global SystemData = @record{
       mask: BitsetArray,
       mask_write: BitsetArray,
-      required_storages: arraytable(BitsetArray),
-      components_indexes: arraytable(arraytable(GenerationalIndex)),
-      available_indexes: Rat, --uinteger :: PAREI AQUI, era arraytable(uinteger), mas tem que mudar pra Rat por conta de uso de Pop:::
+      required_storages: nLinkedList, --nLinkedList(BitsetArray),
+      components_indexes: nLinkedList, --nLinkedList(nLinkedList(GenerationalIndex)),
+      available_indexes: nLinkedList -- nLinkedList(uinteger)
    }
 
-   function SystemData.new (read_components: arraytable(BitsetArray), write_components: arraytable(BitsetArray)): SystemData
+   -- (read_components: nLinkedList(BitsetArray), write_components: nLinkedList(BitsetArray)): SystemData
+   function SystemData.new (read_components: nLinkedList, write_components: nLinkedList): SystemData
       local mask_read: BitsetArray;
       local mask_write: BitsetArray;
 
-      for i = 1_u, #read_components do
-         mask_read = bitset_array.bor(mask_read, read_components[i])
+      for i = 0_u, read_components.length do
+         local i_read_components_ptr = (@BitsetArray*)(read_components:get_data_ptr(i))
+         local i_read_components: BitsetArray = $i_read_components_ptr
+         mask_read = bitset_array.bor(mask_read, i_read_components)
       end
-      for i = 1_u, #write_components do
-         mask_write = bitset_array.bor(mask_write, write_components[i])
+      for i = 0_u, write_components.length do
+         local i_write_components_ptr = (@BitsetArray*)(write_components:get_data_ptr(i))
+         local i_write_components: BitsetArray = $i_write_components_ptr
+         mask_write = bitset_array.bor(mask_write, i_write_components)
       end
 
       local new_system_data: SystemData;
@@ -49,22 +61,23 @@
       return new_system_data
    end
 
-   local function collect_components (system_data_p: pointer(SystemData), entity_i_p: pointer(Entity)): arraytable(GenerationalIndex)
-      local components_tuple: arraytable(GenerationalIndex)
-      local n = 0_u
+   local function collect_components (system_data_p: pointer(SystemData), entity_i_p: pointer(Entity)): nLinkedList -- nLinkedList(GenerationalIndex)
+      local components_tuple = nLinkedList.new()
 
       local system_data = $system_data_p
       local entity_i = $entity_i_p
 
       -- for each required storage, insert the components indexes respectively
-      for i = 1_u, (@uinteger)(#system_data.required_storages) do
-         for j = 1_u, entity_i.associated_storages.count do
-            local entity_i_associated_storages_j_ptr = (@BitsetArray*)(entity_i.associated_storages:get_ptr(j))
+      for i = 0_u, < system_data.required_storages.length do
+         for j = 0_u, < entity_i.associated_storages.length do
+            local entity_i_associated_storages_j_ptr = (@BitsetArray*)(entity_i.associated_storages:get_data_ptr(j))
+            local i_required_storages_ptr = (@BitsetArray*)(system_data.required_storages:get_data_ptr(i))
 
-            if bitset_array.equals(system_data.required_storages[i], $entity_i_associated_storages_j_ptr) then
-               n = n + 1
-               local entity_i_associated_components_i_ptr = (@GenerationalIndex*)(entity_i.associated_components:get_ptr(i))
-               components_tuple[n] = $entity_i_associated_components_i_ptr
+            if bitset_array.equals($i_required_storages_ptr, $entity_i_associated_storages_j_ptr) then
+               local entity_i_associated_components_i_ptr = (@GenerationalIndex*)(entity_i.associated_components:get_data_ptr(i))
+               local newcomponent_ptr = (@GenerationalIndex*)(components_tuple:push(#@GenerationalIndex))
+               local entity_i_associated_components_i: GenerationalIndex = $entity_i_associated_components_i_ptr
+               $newcomponent_ptr = entity_i_associated_components_i
                break
             end
          end
@@ -75,30 +88,35 @@
 
    function SystemData:update (entities_storage_ptr: pointer(Storage), untracked_ids: arraytable(GenerationalIndex))
       local entities_storage = $entities_storage_ptr
-
       for i = 1_u, #untracked_ids do
+         print ('get 80 untracked', #untracked_ids, i)
          local entity_id = untracked_ids[i]
+         print ('get entry system data: ', entity_id.index)
          local possible_i_entity = entities_storage:get_entry(entity_id)
 
          if possible_i_entity:can_get_value() then -- this is a new entity
             local i_entity_ptr = (@Entity*)(possible_i_entity:get_value())
+            print '0#################'
             local i_entity: Entity = $i_entity_ptr
+            print '1#################'
 
             local masks_intersection = bitset_array.band(i_entity.mask, self.mask)
 
             if bitset_array.equals(masks_intersection, self.mask) then
                local idx_to_insert: uinteger = 0_u
 
-               local available_indexes_len = self.available_indexes.count
+               local available_indexes_len = self.available_indexes.length
                if available_indexes_len > 0_u then
-                  local idx_to_insert_ptr = (@uinteger*)(self.available_indexes:get_ptr(available_indexes_len))
+                  local idx_to_insert_ptr = (@uinteger*)(self.available_indexes:get_data_ptr(available_indexes_len))
                   idx_to_insert = $idx_to_insert_ptr
                   self.available_indexes:pop()
                else
-                  idx_to_insert = (@uinteger)(#self.components_indexes) + 1_u
+                  idx_to_insert = self.components_indexes.length
                end
 
-               self.components_indexes[idx_to_insert] = collect_components(self, &i_entity)
+               self.components_indexes:remove(idx_to_insert)
+               local ins_component_idxs = (@nLinkedList*)(self.components_indexes:insert(idx_to_insert, #@nLinkedList))
+               $ins_component_idxs = collect_components(self, &i_entity)
             end
          end
       end
@@ -108,8 +126,9 @@
       local new_available_idx_ptr = (@uinteger*)(self.available_indexes:push(#@uinteger))
       $new_available_idx_ptr = idx;
 
-      local compidx_novalue: arraytable(GenerationalIndex) = {}
-      self.components_indexes[idx] = compidx_novalue
+      local idx_components_indexes_ptr = (@nLinkedList*)(self.components_indexes:get_data_ptr(idx))
+      local idx_components_indexes = $idx_components_indexes_ptr
+      idx_components_indexes:clear()
    end
 
 --[==[
