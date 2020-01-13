@@ -1,0 +1,167 @@
+## if not NLINKEDLIST then --[
+   ## NLINKEDLIST = true
+
+   ## cinclude '<stdlib.h>'
+   local function malloc (size: csize): pointer <cimport 'malloc', nodecl> end
+   local function free (ptr: pointer): void <cimport 'free', nodecl> end
+
+   local nLinkedListNode = @record {
+      data_ptr: pointer, -- pointer(any)
+      next_ptr: pointer -- pointer(nLinkedListNode)
+   }
+
+   function nLinkedListNode.new(ptr: pointer): pointer(nLinkedListNode)
+      local newnode: pointer(nLinkedListNode) = (@nLinkedListNode*)(malloc(#@nLinkedListNode))
+      $newnode = (@nLinkedListNode){data_ptr = ptr, next_ptr = nilptr}
+      return newnode
+   end
+
+   function nLinkedListNode:get_next()
+      local nextnode_ptr: pointer(nLinkedListNode) = (@nLinkedListNode*)(self.next_ptr)
+      return $nextnode_ptr
+   end
+
+   global  nLinkedList = @record {
+      head: pointer(nLinkedListNode),
+      length: uinteger
+   }
+
+   function nLinkedList.new()
+      local newLL = (@nLinkedList){head = nilptr, length = 0}
+      return newLL
+   end
+
+   -- returns previous node and indexed node
+   local function get_nodes(linkedlist_ptr: pointer(nLinkedList), index: uinteger): array(pointer(nLinkedListNode), 2)
+      local linkedlist = $linkedlist_ptr
+
+      local node: pointer(nLinkedListNode) = linkedlist.head
+      local prev_node: pointer(nLinkedListNode) = nilptr
+
+      for i = 0_u, < index do
+         prev_node = node
+         node = (@nLinkedListNode*)(node.next_ptr)
+      end
+
+      local result: array(pointer(nLinkedListNode), 2) = {prev_node, node}
+
+      return result
+   end
+
+   function nLinkedList:insert(index: uinteger, size: csize): pointer
+      assert(index <= self.length, "1st argument 'index' should be <= of 'length' of list")
+
+      local nodedata_ptr = malloc(size)
+      local newnode = nLinkedListNode.new(nodedata_ptr)
+
+      if self.length == 0 then
+         self.head = newnode
+         self.length = self.length + 1
+      else
+         local nodes = get_nodes(self, index)
+         local prev_node: pointer(nLinkedListNode) = nodes[0]
+         local node: pointer(nLinkedListNode) = nodes[1]
+
+         prev_node.next_ptr = newnode
+         newnode.next_ptr = node
+
+         self.length = self.length + 1
+      end
+
+      return nodedata_ptr
+   end
+
+   function nLinkedList:remove(index: uinteger)
+      assert(index <= self.length, "1st argument 'index' should be <= of 'length' of list")
+
+      local nodes = get_nodes(self, index)
+
+      if index > 0 then
+         local prev_node_ptr: pointer(nLinkedListNode) = nodes[0]
+         local node_ptr: pointer(nLinkedListNode) = nodes[1]
+
+         local prev_node = $prev_node_ptr
+         local node = $node_ptr
+
+         prev_node.next_ptr = node.next_ptr
+         $prev_node_ptr = prev_node
+
+         free(node.data_ptr)
+         free(node_ptr)
+      else
+         local node_ptr: pointer(nLinkedListNode) = nodes[1]
+         local node = $node_ptr
+
+         self.head = (@nLinkedListNode*)(node.next_ptr)
+
+         free(node.data_ptr)
+         free(node_ptr)
+      end
+
+      self.length = self.length - 1
+   end
+
+   function nLinkedList:get_node_data(index: uinteger): pointer
+      assert(index <= self.length, "1st argument 'index' should be <= of 'length' of list")
+
+      local nodes = get_nodes(self, index)
+      local node: pointer(nLinkedListNode) = nodes[1]
+      return node.data_ptr
+   end
+## end --]
+
+## if not NLINKEDLIST and false then -- if (should test) then [
+   local Person = @record {name: string, age: uinteger}
+   local mylist = nLinkedList.new()
+
+   -- Brazilian placeholder names from
+   -- pt.wikipedia.org/wiki/Fulano
+   local names: array(string , 3) = {"Fulano", "Fulana", "ZeDaSilva"}
+   local ages: array(uinteger, 3) = {20      , 22      , 46         }
+
+   for i = 0_u, < (@uinteger)(#names) do
+      local name_ptr = (@Person*)(mylist:insert(i, #@Person))
+      $name_ptr = (@Person){name = names[i], age = ages[i]}
+   end
+
+   assert((@uinteger)(#names) == mylist.length)
+   for i = 0_u, < mylist.length do
+      local person_ptr = (@Person*)(mylist:get_node_data(i))
+
+      local name = ($person_ptr).name
+      local age = ($person_ptr).age
+
+      assert(name == names[i])
+      assert(age == ages[i])
+   end
+
+   mylist:remove(1_u)
+
+   for i = 0_u, < mylist.length do
+      local person_ptr = (@Person*)(mylist:get_node_data(i))
+
+      local name = ($person_ptr).name
+      local age = ($person_ptr).age
+
+      if i < 1_u then
+         assert(name == names[i])
+         assert(age == ages[i])
+      else
+         assert(name == names[i+1])
+         assert(age == ages[i+1])
+      end
+   end
+
+## end --]
+
+
+
+
+
+
+
+
+
+
+
+
