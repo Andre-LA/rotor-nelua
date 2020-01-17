@@ -12,20 +12,18 @@
    -- : (a: nLinkedList(BitsetArray), b: nLinkedList(BitsetArray)): nLinkedList(BitsetArray)
    local function union(a: nLinkedList, b: nLinkedList): nLinkedList
       local result = nLinkedList.new()
-      local a_len = a.length
 
-      for i = 0_u, < a_len do
+      for i = 0_u, < a.length do
          local v = (@BitsetArray*)(result:push(#@BitsetArray))
          local a_ptr = (@BitsetArray*)(a:get_data_ptr(i))
-         local a_val: BitsetArray = $a_ptr
-         $v = bitset_array.copy(a_val)
+         $v = bitset_array.copy($a_ptr)
       end
       for i = 0_u, < b.length do
          local v = (@BitsetArray*)(result:push(#@BitsetArray))
          local b_ptr = (@BitsetArray*)(b:get_data_ptr(i))
-         local b_val: BitsetArray = $b_ptr
-         $v = bitset_array.copy(b_val)
+         $v = bitset_array.copy($b_ptr)
       end
+
       return result
    end
 
@@ -39,24 +37,25 @@
 
    -- (read_components: nLinkedList(BitsetArray), write_components: nLinkedList(BitsetArray)): SystemData
    function SystemData.new (read_components: nLinkedList, write_components: nLinkedList): SystemData
-      local mask_read: BitsetArray;
-      local mask_write: BitsetArray;
+      local mask_read = bitset_array.new(1, BITSETARRAY_OF_ZEROS);
+      local mask_write = bitset_array.new(1, BITSETARRAY_OF_ZEROS);
 
-      for i = 0_u, read_components.length do
-         local i_read_components_ptr = (@BitsetArray*)(read_components:get_data_ptr(i))
-         local i_read_components: BitsetArray = $i_read_components_ptr
-         mask_read = bitset_array.bor(mask_read, i_read_components)
+      for i = 0_u, < read_components.length do
+         local read_component_ptr = (@BitsetArray*)(read_components:get_data_ptr(i))
+         mask_read = bitset_array.bor(mask_read, $read_component_ptr)
       end
-      for i = 0_u, write_components.length do
-         local i_write_components_ptr = (@BitsetArray*)(write_components:get_data_ptr(i))
-         local i_write_components: BitsetArray = $i_write_components_ptr
-         mask_write = bitset_array.bor(mask_write, i_write_components)
+      for i = 0_u, < write_components.length do
+         local write_component_ptr = (@BitsetArray*)(write_components:get_data_ptr(i))
+         mask_write = bitset_array.bor(mask_write, $write_component_ptr)
       end
 
-      local new_system_data: SystemData;
-      new_system_data.mask = bitset_array.bor(mask_read, mask_write)
-      new_system_data.mask_write = mask_write
-      new_system_data.required_storages = union(read_components, write_components)
+      local new_system_data = (@SystemData){
+         mask = bitset_array.bor(mask_read, mask_write),
+         mask_write = mask_write,
+         required_storages = union(read_components, write_components),
+         components_indexes = nLinkedList.new(),
+         available_indexes = nLinkedList.new()
+      }
 
       return new_system_data
    end
@@ -68,6 +67,7 @@
       local entity_i = $entity_i_p
 
       -- for each required storage, insert the components indexes respectively
+
       for i = 0_u, < system_data.required_storages.length do
          for j = 0_u, < entity_i.associated_storages.length do
             local entity_i_associated_storages_j_ptr = (@BitsetArray*)(entity_i.associated_storages:get_data_ptr(j))
@@ -86,19 +86,18 @@
       return components_tuple
    end
 
-   function SystemData:update (entities_storage_ptr: pointer(Storage), untracked_ids: arraytable(GenerationalIndex))
+   function SystemData:update (entities_storage_ptr: pointer(Storage), untracked_ids: nLinkedList--[[(GenerationalIndex)]])
       local entities_storage = $entities_storage_ptr
-      for i = 1_u, #untracked_ids do
-         print ('get 80 untracked', #untracked_ids, i)
-         local entity_id = untracked_ids[i]
-         print ('get entry system data: ', entity_id.index)
+
+      for i = 0_u, < untracked_ids.length do
+         local entity_id_ptr = (@GenerationalIndex*)(untracked_ids:get_data_ptr(i))
+         local entity_id: GenerationalIndex = $entity_id_ptr
+
          local possible_i_entity = entities_storage:get_entry(entity_id)
 
          if possible_i_entity:can_get_value() then -- this is a new entity
             local i_entity_ptr = (@Entity*)(possible_i_entity:get_value())
-            print '0#################'
             local i_entity: Entity = $i_entity_ptr
-            print '1#################'
 
             local masks_intersection = bitset_array.band(i_entity.mask, self.mask)
 
@@ -114,7 +113,10 @@
                   idx_to_insert = self.components_indexes.length
                end
 
-               self.components_indexes:remove(idx_to_insert)
+               if self.components_indexes:contains(idx_to_insert) then
+                  self.components_indexes:remove(idx_to_insert)
+               end
+               
                local ins_component_idxs = (@nLinkedList*)(self.components_indexes:insert(idx_to_insert, #@nLinkedList))
                $ins_component_idxs = collect_components(self, &i_entity)
             end
@@ -130,9 +132,6 @@
       local idx_components_indexes = $idx_components_indexes_ptr
       idx_components_indexes:clear()
    end
-
---[==[
---]==]
 
    ## buildstatus.close 'system_data required'
 ## end
