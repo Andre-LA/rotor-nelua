@@ -1,16 +1,14 @@
-
 ## if not STORAGE_ALREADY_REQUIRED then
    ## STORAGE_ALREADY_REQUIRED = true
 
    require 'buildstatus'
-   ## buildstatus.print('requiring rotor.storage')
+   ## buildstatus.open('requiring rotor.storage')
 
    require ('rotor.generational_index')
    require ('rotor.optionals')
    require ('rotor.optionals.uinteger')
    require ('rotor.optionals.pointer')
    require ('nstd.nlists.nlinkedlist')
-
 
    global Storage = @record{
       next_free_ids: nLinkedList, -- nLinkedList(GenerationalIndex)
@@ -35,35 +33,35 @@
    function Storage.new(): Storage
       local newstorage: Storage;
       local gen_idx_ptr = (@GenerationalIndex*)(newstorage.next_free_ids:push(#@GenerationalIndex))
-      $gen_idx_ptr = GenerationalIndex.new(1, 0)
+      $gen_idx_ptr = GenerationalIndex.new(0, 0)
       return newstorage
    end
 
-   function Storage:new_entry(entry_content_ptr: pointer): GenerationalIndex
+
+   function Storage:new_entry(entry_size: csize): (pointer, GenerationalIndex)
       local last_index = self.next_free_ids.length - 1
       local last_free_id_ptr = (@GenerationalIndex*)(self.next_free_ids:get_data_ptr(last_index))
-
       local last_free_id = $last_free_id_ptr
 
-      --print ('before self.entries[', last_free_id.index, ']; ')
-      self.entries:remove(last_free_id.index)
-      local entry_set_gptr = self.entries:insert(last_free_id.index, #@pointer)
-      local entry_set_ptr = (@pointer*)(entry_set_gptr)
-      $entry_set_ptr = entry_content_ptr
-      --print ('ok')
+      if self.entries:contains(last_free_id.index) then
+         self.entries:remove(last_free_id.index)
+      end
+
+      local new_entry_ptr = self.entries:insert(last_free_id.index, entry_size)
 
       local gennewvalue: Opt_uinteger;
       gennewvalue:set_value(last_free_id.generation)
 
-      --print ('before self.generations[', last_free_id.index, ']; ')
-      self.generations:remove(last_free_id.index)
-      local gen_set_ptr = (@Opt_uinteger*)(self.generations:insert(last_free_id.index, #@pointer))
+      if self.generations:contains(last_free_id.index) then
+         self.generations:remove(last_free_id.index)
+      end
+
+      local gen_set_ptr = (@Opt_uinteger*)(self.generations:insert(last_free_id.index, #@Opt_uinteger))
       $gen_set_ptr = gennewvalue
-      --print ('ok')
 
       local new_id = GenerationalIndex.new(last_free_id.index, last_free_id.generation)
 
-      if last_free_id.index > self.len then
+      if last_free_id.index >= self.len then
          self.len = last_free_id.index
          last_free_id.index = last_free_id.index + 1
          last_free_id.generation = 0
@@ -74,7 +72,7 @@
       $last_free_id_ptr = last_free_id
 
       -- return a copy of the gen_idx of this new entry
-      return new_id
+      return new_entry_ptr, new_id
    end
 
    function Storage:get_entry(gen_idx: GenerationalIndex): Opt_pointer
@@ -84,27 +82,24 @@
          return result
       end
 
-      local entry_ptrptr: pointer = self.entries:get_data_ptr(gen_idx.index)
-      local entry_cptr = (@pointer*)(entry_ptrptr)
-      local entry_ptr = $entry_cptr
-
+      local entry_ptr: pointer = self.entries:get_data_ptr(gen_idx.index)
       result:set_value(entry_ptr)
+
       return result
    end
 
    function Storage:remove_entry(gen_idx: GenerationalIndex): boolean
-      local ok = self:get_entry(gen_idx)
-
-      if not ok:can_get_value() then
+      if not is_valid_entry(self, gen_idx) then
          return false
       end
 
-      local ptr2nothing: pointer = nilptr
+      if self.entries:contains(gen_idx.index) then
+         self.entries:remove(gen_idx.index)
+      end
 
-      self.entries:remove(gen_idx.index)
       local entry_set_gptr = self.entries:insert(gen_idx.index, #@pointer)
       local entry_set_ptr = (@pointer*)(entry_set_gptr)
-      $entry_set_ptr = ptr2nothing
+      $entry_set_ptr = nilptr
 
       local gennewvalue_ptr = (@Opt_uinteger*)(self.generations:get_data_ptr(gen_idx.index))
       local gennewvalue = $gennewvalue_ptr
@@ -129,22 +124,46 @@
       return true
    end
 
-   --Iterators are NYI feature",
-   --function " .. storagetypename .. ".iterate_entries(storage)",
-      --local i, entries_len, entry_id = 0, storage.len, new_id(0, 0)",
+--   Iterators are NYI feature",
+--   function " .. storagetypename .. ".iterate_entries(storage)",
+--      local i, entries_len, entry_id = 0, storage.len, new_id(0, 0)",
 --
-      --return function ()",
-         --local ok_entry;",
+--      return function ()",
+--         local ok_entry;",
 --
-         --while ok_entry == nil and i < entries_len do",
-            --i = i + 1",
-            --entry_id.index, entry_id.generation = i, (storage.generations[i] or -1)",
-            --ok_entry = " .. storagetypename .. ".get_entry(storage, entry_id)",
-         --end",
+--         while ok_entry == nil and i < entries_len do",
+--            i = i + 1",
+--            entry_id.index, entry_id.generation = i, (storage.generations[i] or -1)",
+--            ok_entry = " .. storagetypename .. ".get_entry(storage, entry_id)",
+--         end",
 --
-         --return ok_entry, entry_id",
-      --end",
-   --end",
+--         return ok_entry, entry_id",
+--      end",
+--   end",
 
-   ## buildstatus.print('rotor.storage required')
+   ## buildstatus.close('rotor.storage required')
 ## end
+
+## if false then --[
+   local Teste = @record {x: number, y: number}
+   function Teste:__tostring() print("Teste {x = ", self.x, ", y = ", self.y, "}") end
+
+   print 'NEW'
+   local storage_test = Storage.new()
+
+   print 'NEW ENTRY'
+   local new_entry_ptr, new_entry_id = storage_test:new_entry(#@Teste)
+   local new_entry_Tptr = (@Teste*)(new_entry_ptr)
+   $new_entry_Tptr = (@Teste){x = 777, y = 1333}
+
+   print 'GET ENTRY'
+   local possible_entry_ptr = storage_test:get_entry(new_entry_id)
+   assert(possible_entry_ptr:can_get_value(), 'test error: cannot get value')
+
+   local entry_ptr = (@Teste*)(possible_entry_ptr:get_value())
+   local entry: Teste = $entry_ptr
+
+   entry:__tostring()
+   print 'storage test succeed'
+   --]]
+## end --]
