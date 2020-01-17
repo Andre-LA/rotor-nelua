@@ -1,9 +1,9 @@
-##[[ 
+##[[
 if not BUILDSTATUS then
    BUILDSTATUS = true
-   
+
    local levels = 0
-   
+
    local function gen_pre()
       local pre = ''
       for i=1, levels do
@@ -11,12 +11,13 @@ if not BUILDSTATUS then
       end
       return pre
    end
-   
+
    local function bs_print(...)
-      t = {...}   
+      if not buildstatus.should_print then return end
+      t = {...}
       print(gen_pre() .. table.concat(t, ', '))
    end
-   
+
    buildstatus = {
       should_print = true,
       print = bs_print,
@@ -31,10 +32,10 @@ if not BUILDSTATUS then
          bs_print(...)
       end,
    }
-end 
+end
 ]]
 
-##[[ 
+##[[
 local TESTS = false
 if TESTS then
    buildstatus.print("hello")
