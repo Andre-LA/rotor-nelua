@@ -20,9 +20,9 @@
 
    function Entity.new(): Entity
       local new_entity = (@Entity){
-         associated_components = {},
-         associated_storages = {},
-         mask = bitset_array.new(0, {0}),
+         associated_components = nLinkedList.new(),
+         associated_storages = nLinkedList.new(),
+         mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS),
          untracked = true,
       }
       return new_entity
