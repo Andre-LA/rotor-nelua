@@ -1,10 +1,10 @@
-## cinclude '<stdlib.h>'
-## cinclude '<stdio.h>'
-
-local function malloc (size: csize): pointer <cimport 'malloc', nodecl> end
-local function free (ptr: pointer): void <cimport 'free', nodecl> end
+local ENTITY_COUNT: uinteger <comptime> = 15000_u
 
 require 'math'
+require 'os'
+
+require 'buildstatus'
+## buildstatus.should_print = false
 
 require ("rotor.bitset_array")
 require ("rotor.bitset_array")
@@ -52,17 +52,33 @@ local Masks = @record{
 
 -- masks
 local masks: Masks = (@Masks){
-   position = bitset_array.new(1, {1}),
-   velocity = bitset_array.lshift(bitset_array.new(1, {1}), 1),
-   name     = bitset_array.lshift(bitset_array.new(1, {1}), 2)
+   position = bitset_array.new(1, BITSETARRAY_OF_ONE),                         -- 1
+   velocity = bitset_array.lshift(bitset_array.new(1, BITSETARRAY_OF_ONE), 1), -- 2
+   name     = bitset_array.lshift(bitset_array.new(1, BITSETARRAY_OF_ONE), 2)  -- 4
 }
 
-local movement_read: arraytable(BitsetArray) = {masks.velocity}
-local movement_write: arraytable(BitsetArray) = {masks.position}
+local movement_read: nLinkedList = nLinkedList.new() --nLinkedList(BitsetArray)
+do
+   local movement_read1_ptr = (@BitsetArray*)(movement_read:push(#@BitsetArray))
+   $movement_read1_ptr = bitset_array.copy(masks.velocity)
+end
 
-local rightmost_read: arraytable(BitsetArray) = {masks.name, masks.position}
-local rightmost_write: arraytable(BitsetArray) = {}
+local movement_write: nLinkedList = nLinkedList.new() --nLinkedList(BitsetArray)
+do
+   local movement_write1_ptr = (@BitsetArray*)(movement_write:push(#@BitsetArray))
+   $movement_write1_ptr = bitset_array.copy(masks.position)
+end
 
+local rightmost_read: nLinkedList = nLinkedList.new() --nLinkedList(BitsetArray)
+do
+   local rightmost_read1_ptr = (@BitsetArray*)(rightmost_read:push(#@BitsetArray))
+   $rightmost_read1_ptr = bitset_array.copy(masks.name)
+
+   local rightmost_read2_ptr = (@BitsetArray*)(rightmost_read:push(#@BitsetArray))
+   $rightmost_read2_ptr = bitset_array.copy(masks.position)
+end
+
+local rightmost_write: nLinkedList = nLinkedList.new() --nLinkedList(BitsetArray)
 
 -- systems data
 local SystemsData = @record{
@@ -74,23 +90,23 @@ local systems_data = (@SystemsData){
    movement  = SystemData.new(movement_read, movement_write),
    rightmost = SystemData.new(rightmost_read, rightmost_write)
 }
-
 -- systems are just functions, here we have 2 examples
 -- movement_system is more "functional", using arguments instead of locals declared above.
 -- rightmost_system will use the locals
 -- anyway, do what you think is better, is just a function ;)
 
 local function movement_system(mov_system_data: SystemData, velocity_storage: Storage, position_storage: Storage)
-   for i = 1_u, (@uinteger)(#mov_system_data.components_indexes) do
-      local ids = mov_system_data.components_indexes[i]
+   for i = 0_u, < mov_system_data.components_indexes.length do
+      local ids_ptr = (@nLinkedList*)(mov_system_data.components_indexes:get_data_ptr(i))
+      local ids = $ids_ptr
 
-      if #ids > 0 then
-         local vel_id = ids[1]
-         local pos_id = ids[2]
+      if ids.length > 0 then
+         local vel_id_ptr = (@GenerationalIndex*)(ids:get_data_ptr(0))
+         local pos_id_ptr = (@GenerationalIndex*)(ids:get_data_ptr(1))
 
-         -- TODO: get_entry deverá retornar um optional cujo valor é
-         -- ponteiro para a entrada do storage; ou criar uma rotina extra
-         -- chamada get_entry_pointer, ou ainda, também adicionar a rotina set_entry
+         local vel_id: GenerationalIndex = $vel_id_ptr
+         local pos_id: GenerationalIndex = $pos_id_ptr
+
          local possible_vel = velocity_storage:get_entry(vel_id)
          local possible_pos = position_storage:get_entry(pos_id)
 
@@ -103,6 +119,9 @@ local function movement_system(mov_system_data: SystemData, velocity_storage: St
 
             pos.x = pos.x + vel.x
             pos.y = pos.y + vel.y
+
+            $pos_ptr = pos
+            $vel_ptr = vel
          else
             mov_system_data:mark_available(i)
          end
@@ -110,16 +129,20 @@ local function movement_system(mov_system_data: SystemData, velocity_storage: St
    end
 end
 
-local function rightmost_system(rightmost_system_data: SystemData, rightmost_ptr: pointer(Rightmost))
+local function rightmost_system(rightmost_ptr: pointer(Rightmost))
    local rightmost = $rightmost_ptr
    local rightmost_position = -99999999
 
-   for i = 1_u, (@uinteger)(#systems_data.rightmost.components_indexes) do
-      local ids = systems_data.rightmost.components_indexes[i]
+   for i = 0_u, < systems_data.rightmost.components_indexes.length do
+      local ids_ptr = (@nLinkedList*)(systems_data.rightmost.components_indexes:get_data_ptr(i))
+      local ids = $ids_ptr
 
-      if #ids > 0 then
-         local name_id = ids[1]
-         local pos_id = ids[2]
+      if ids.length > 0 then
+         local name_id_ptr = (@GenerationalIndex*)(ids:get_data_ptr(0))
+         local pos_id_ptr = (@GenerationalIndex*)(ids:get_data_ptr(1))
+
+         local name_id: GenerationalIndex = $name_id_ptr
+         local pos_id: GenerationalIndex = $pos_id_ptr
 
          local possible_name = storages.name:get_entry(name_id)
          local possible_pos  = storages.position:get_entry(pos_id)
@@ -146,97 +169,106 @@ local function rightmost_system(rightmost_system_data: SystemData, rightmost_ptr
 end
 
 -- here, we will store the ids
-local names_ids: arraytable(GenerationalIndex)
+local e_ids: nLinkedList --(GenerationalIndex);
+local names_ids: nLinkedList --(GenerationalIndex);
 
 -- also, we need to store the ids of created and removed entities ids
-local untracked_entities_ids: arraytable(GenerationalIndex)
+local untracked_entities_ids: nLinkedList -- GenerationalIndex
 
--- let's create 3 entities!
-for i = 1_u, 3_u do
-   print('i>', i)
-
+-- let's create 1 entity!
+print 'creating!'
+for i = 0_u, < ENTITY_COUNT do
    -- create an entity in the entities storage and get this new entity
-   local new_entity_ptr = (@Entity*)(malloc(#@Entity))
-   $new_entity_ptr = Entity.new()
-   local new_entity = $new_entity_ptr
+   local new_entity_pptr, new_entity_id = storages.entity:new_entry(#@Entity)
+   local new_entity_ptr = (@Entity*)(new_entity_pptr)
 
-   print '***'
-   local new_entity_id = storages.entity:new_entry(new_entity_ptr)
+   local new_entity = Entity.new()
 
-   print('<i', i)
+
+   local e_id_ptr = (@GenerationalIndex*)(e_ids:push(#@GenerationalIndex))
+   $e_id_ptr = new_entity_id
+
 
    -- create the components in their respective storages.
    -- storage.new_entry(value) returns a generational_index, it's used as an ID
    -- create_position(x, y) returns just a new very simple table, remember?
-   local new_position_ptr = (@Position*)(malloc(#@Position))
-   local new_velocity_ptr = (@Velocity*)(malloc(#@Velocity))
-   local new_name_ptr = (@Name*)(malloc(#@Name))
+   local new_position_pptr, new_position_id = storages.position:new_entry(#@Position)
+   local new_velocity_pptr, new_velocity_id = storages.velocity:new_entry(#@Velocity)
+   local new_name_pptr, new_name_id = storages.name:new_entry(#@Name)
 
+   local new_position_ptr = (@Position*)(new_position_pptr)
+   local new_velocity_ptr = (@Velocity*)(new_velocity_pptr)
+   local new_name_ptr = (@Name*)(new_name_pptr)
+
+   math.randomseed(os.time_default())
    $new_position_ptr = (@Position){x = (@integer)(math.random() * 200 - 100.0), y = (@integer)(i)}
+   math.randomseed(os.time_default())
    $new_velocity_ptr = (@Velocity){x = (@integer)(math.random() * 400 - 200.0), y = 0}
    $new_name_ptr = "some entity"
 
-   local new_position_id = storages.position:new_entry(new_position_ptr)
-   local new_velocity_id = storages.velocity:new_entry(new_velocity_ptr)
-
    -- storages accepts any value
-   names_ids[i] = storages.name:new_entry(new_name_ptr)
+   local names_id_ptr = (@GenerationalIndex*)(names_ids:push(#@GenerationalIndex))
+   $names_id_ptr = new_name_id
 
    -- this is how we associate an entity with a storage entry;
    -- making a unique bitmask per storage is necessary
    new_entity:associate(new_position_id, masks.position)
+
    new_entity:associate(new_velocity_id, masks.velocity)
-   new_entity:associate(names_ids[i], masks.name)
+
+   new_entity:associate(new_name_id, masks.name)
 
    $new_entity_ptr = new_entity
 
-   -- storing the new entity id
-   untracked_entities_ids[#untracked_entities_ids+1] = new_entity_id
+
+   -- storing the new entity ids
+   local untracked_entities_ids_ptr = (@GenerationalIndex*)(untracked_entities_ids:push(#@GenerationalIndex))
+   $untracked_entities_ids_ptr = new_entity_id
 end
 
---[==[
 -- now, we update the systems datas, so they will know what entities
 -- should be processed
-systems_data.movement:update(storages.entity, untracked_entities_ids)
-systems_data.rightmost:update(storages.entity, untracked_entities_ids)
+print 'update systems!'
+systems_data.movement:update(&storages.entity, untracked_entities_ids)
+systems_data.rightmost:update(&storages.entity, untracked_entities_ids)
 
--- let's execute movement system 10x
+ --let's execute movement system 10x
 for _ = 1, 10 do
+   print ('executing movement system')
    movement_system(systems_data.movement, storages.velocity, storages.position)
 end
 
-local rightmost = create_rightmost()
+local rightmost: Rightmost
 
 -- let's execute rightmost_system, note that 'rigtmost' variable
 -- is not an storage, component, or something specific;
 -- since systems are just functions that you can declare and use
 -- in whathever way you want, there is absolutely no special thing
 -- in executing systems, they are just functions.
-rightmost_system(rightmost)
+print ('executing rightmost system')
+rightmost_system(&rightmost)
 
-local n = 1
-for e, e_id in storages.entity:iterate_entries() do
-  -- note: methods are implemented using metatable and __index field,
-  -- so, in all libraries used, methods are optional,
-  -- you can use (and localize for performance) the function
-  -- from the libraries
+for i: uinteger = 0_u, < storages.entity.entries.length do
+   local e_id_ptr = (@GenerationalIndex*)(e_ids:get_data_ptr(i))
+   local e_id: GenerationalIndex = $e_id_ptr
 
-  entity.disassociate(e, masks.position)
+   local name_id_ptr = (@GenerationalIndex*)(names_ids:get_data_ptr(i))
+   local name_id: GenerationalIndex = $name_id_ptr
 
-  local disassociate = entity.disassociate
-  disassociate(e, masks.velocity)
+   local possible_e_ptr: Opt_pointer = storages.entity:get_entry(e_id)
 
-  -- you can also disassociate using the entry generational index
-  e:disassociate(names_ids[n])
-  n = n + 1
+   if possible_e_ptr:can_get_value() then
+      local e_ptr = (@Entity*)(possible_e_ptr:get_value())
+      local e: Entity = $e_ptr
+
+      e:disassociate_by_storage(masks.position)
+      e:disassociate_by_storage(masks.velocity)
+      e:disassociate_by_component(name_id)
+   end
 end
 
-local name, pos_x = rightmost.name_comp, rightmost.pos_comp.x
+local name, pos_x = rightmost.name_component, rightmost.pos_component.x
+print ("entity '", name, "' is in the rightmost position x: ", pos_x)
 
-print (
-  'entity "'
-  .. tostring(name)
-  .. '" is in the rightmost position x: '
-  .. tostring(pos_x)
-)
+--[==[
 --]==]
