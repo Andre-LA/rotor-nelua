@@ -1,31 +1,33 @@
 ## if not BITSETARRAY_ALREADY_REQUIRED then
    require 'buildstatus'
    ## buildstatus.open 'requiring bitset_array'
-   
+
    ## BITSETARRAY_ALREADY_REQUIRED = true
 
    local LEFTMOSTBIT: uinteger <const> = (@uinteger)(~((~0) >> 1))
 
    global bitset_array = @record{}
-   global BitsetArray: type = @arraytable(uinteger)
+   global BitsetArray: type = @array(uinteger, 4)
+   global BITSETARRAY_OF_ZEROS: BitsetArray <const> = {0, 0, 0, 0}
+   global BITSETARRAY_OF_ONES: BitsetArray <const>  = {1, 1, 1, 1}
+   global BITSETARRAY_OF_ONE: BitsetArray <const>   = {0, 0, 0, 1}
 
 
    function bitset_array.new (initial_length: uinteger, initial_value: BitsetArray): BitsetArray
-      local new_bitset_array: BitsetArray = {initial_value[1]}
-      
-      for i = 2_u, (@uinteger)(initial_length) do
-         new_bitset_array[i] = initial_value[i] 
+      local new_bitset_array: BitsetArray;
+      new_bitset_array[0] = initial_value[0]
+
+      for i = 0_u, < initial_length do
+         new_bitset_array[i] = initial_value[i]
       end
-      
+
       return new_bitset_array
    end
-
-   --print(bit bitset_array.new(0, {0}).ccc())
 
    local function get_greater_len2u(left_len: integer, right_len: integer): uinteger
       local len_l = (@uinteger)(left_len)
       local len_r = (@uinteger)(right_len)
-      
+
       local len = 0_u
       if len_l > len_r then
          len = len_l
@@ -36,9 +38,9 @@
    end
 
    function bitset_array.copy(bitset_array_data: BitsetArray): BitsetArray
-      local new_bitset_array = bitset_array.new(0, {0})
+      local new_bitset_array = bitset_array.new(0, BITSETARRAY_OF_ZEROS)
 
-      for i = 1_u, (@uinteger)(#bitset_array_data) do
+      for i = 0_u, < (@uinteger)(#bitset_array_data) do
          new_bitset_array[i] = bitset_array_data[i]
       end
 
@@ -48,7 +50,7 @@
    function bitset_array.equals(left_bitset_array: BitsetArray, right_bitset_array: BitsetArray): boolean
       local len = get_greater_len2u(#left_bitset_array, #right_bitset_array)
 
-      for i = 1_u, len do
+      for i = 0_u, < len do
          if left_bitset_array[i] ~= right_bitset_array[i] then
             return false
          end
@@ -61,16 +63,16 @@
       local len_l = (@uinteger)(#left_bitset_array)
       local len_r = (@uinteger)(#right_bitset_array)
       local len = get_greater_len2u(#left_bitset_array, #right_bitset_array)
-      
-      local result = bitset_array.new(len, {0})
-      
-      for i = 1_u, len do
+
+      local result = bitset_array.new(len, BITSETARRAY_OF_ZEROS)
+
+      for i = 0_u, < len do
          local l_value = 1_u
          if i <= len_l then l_value = left_bitset_array[i] end
-         
+
          local r_value = 1_u
          if i <= len_r then r_value = right_bitset_array[i] end
-      
+
          result[i] = l_value & r_value
       end
 
@@ -82,16 +84,16 @@
       local len_l = (@uinteger)(#left_bitset_array)
       local len_r = (@uinteger)(#right_bitset_array)
       local len = get_greater_len2u(#left_bitset_array, #right_bitset_array)
-      
-      local result = bitset_array.new(len, {0})
-      
-      for i = 1_u, len do
-         local l_value = 1_u
+
+      local result = bitset_array.new(len, BITSETARRAY_OF_ZEROS)
+
+      for i = 0_u, < len do
+         local l_value = 0_u
          if i <= len_l then l_value = left_bitset_array[i] end
-         
-         local r_value = 1_u
+
+         local r_value = 0_u
          if i <= len_r then r_value = right_bitset_array[i] end
-      
+
          result[i] = l_value | r_value
       end
 
@@ -102,16 +104,16 @@
       local len_l = (@uinteger)(#left_bitset_array)
       local len_r = (@uinteger)(#right_bitset_array)
       local len = get_greater_len2u(#left_bitset_array, #right_bitset_array)
-      
-      local result = bitset_array.new(len, {0})
-      
-      for i = 1_u, len do
-         local l_value = 1_u
+
+      local result = bitset_array.new(len, BITSETARRAY_OF_ZEROS)
+
+      for i = 0_u, < len do
+         local l_value = 0_u
          if i <= len_l then l_value = left_bitset_array[i] end
-         
-         local r_value = 1_u
+
+         local r_value = 0_u
          if i <= len_r then r_value = right_bitset_array[i] end
-      
+
          result[i] = l_value ~ r_value
       end
 
@@ -120,9 +122,9 @@
 
    function bitset_array.bnot (bitset_array_data: BitsetArray): BitsetArray
       local len = (@uinteger)(#bitset_array_data)
-      local result = bitset_array.new(len, {0})
+      local result = bitset_array.new(len, BITSETARRAY_OF_ZEROS)
 
-      for i = 1_u, len do
+      for i = 0_u, < len do
          result[i] = ~(bitset_array_data[i])
       end
 
@@ -133,11 +135,11 @@
       local len = (@uinteger)(#bitset_array_data)
       local result = bitset_array.copy(bitset_array_data)
 
-      for _ = 1_u, steps do
+      for _ = 0_u, < steps do
          local previous_contained_leftmost_bit = false
          local result_prev_step = bitset_array.copy(result)
 
-         for i = 1_u, len do
+         for i = 0_u, < len do
             local contains_leftmost_bit = (result_prev_step[i] & LEFTMOSTBIT) == LEFTMOSTBIT
 
             result[i] = result_prev_step[i] << 1
@@ -157,11 +159,11 @@
       local len = #bitset_array_data
       local result = bitset_array.copy(bitset_array_data)
 
-      for _ = 1_u, steps do
+      for _ = 0_u, < steps do
          local previous_contained_rightmost_bit = false
          local result_prev_step = bitset_array.copy(result)
 
-         for i: integer = len, 1, -1 do
+         for i: integer = len - 1, 0, -1 do
             local contains_rightmost_bit = (result_prev_step[i] & 1) == 1
 
             result[i] = result_prev_step[i] >> 1
@@ -176,6 +178,35 @@
 
       return result
    end
-   
+
    ## buildstatus.close 'bitset_array required'
 ## end
+
+## if false then --[
+   local a: BitsetArray = bitset_array.new(0, BITSETARRAY_OF_ZEROS)
+   assert(a[1] == 0)
+
+   local b = bitset_array.new(0, BITSETARRAY_OF_ONE)
+   assert(b[1] == 1)
+
+   local c = bitset_array.copy(a)
+   assert(#a == #c)
+
+   for i = 1, #a do
+      assert(a[i] == c[i])
+   end
+
+   local d = bitset_array.new(0, BITSETARRAY_OF_ONE)
+   assert(d[1] == 1)
+
+   d = bitset_array.lshift(d, 1)
+   assert(d[1] == 2)
+
+   d = bitset_array.lshift(d, 1)
+   assert(d[1] == 4)
+
+   d = bitset_array.rshift(d, 1)
+   assert(d[1] == 2)
+
+   print 'tests succeed'
+## end --]
