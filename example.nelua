@@ -3,9 +3,6 @@ local ENTITY_COUNT: uinteger <comptime> = 15000_u
 require 'math'
 require 'os'
 
-require 'buildstatus'
-## buildstatus.should_print = false
-
 require ("rotor.bitset_array")
 require ("rotor.bitset_array")
 require ("rotor.entity")

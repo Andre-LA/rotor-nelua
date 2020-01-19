@@ -1,6 +1,3 @@
-   require 'buildstatus'
-   ## buildstatus.open 'requiring generational_index'
-   
    global GenerationalIndex = @record {
       index: uinteger,
       generation: uinteger
@@ -18,5 +15,3 @@
    function GenerationalIndex:copy(gidx_to_copy: GenerationalIndex): GenerationalIndex
       return GenerationalIndex.new(gidx_to_copy.index, gidx_to_copy.generation)
    end
-      
-   ## buildstatus.close 'generational_index required'

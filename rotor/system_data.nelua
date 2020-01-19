@@ -1,6 +1,3 @@
-   require 'buildstatus'
-   ## buildstatus.open 'requiring system_data'
-
    require "rotor.bitset_array"
    require "rotor.entity"
    require "rotor.storage"
@@ -129,5 +126,3 @@
       local idx_components_indexes = $idx_components_indexes_ptr
       idx_components_indexes:clear()
    end
-
-   ## buildstatus.close 'system_data required'

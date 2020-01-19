@@ -1,10 +1,7 @@
-   require 'buildstatus'
-   ## buildstatus.open('requiring rotor.storage')
-
    require ('rotor.generational_index')
-   require ('rotor.optionals')
-   require ('rotor.optionals.uinteger')
-   require ('rotor.optionals.pointer')
+   require 'rotor.optional'
+   ## generate_optional('uinteger')
+   ## generate_optional('pointer')
    require ('nstd.nlists.nlinkedlist')
 
    global Storage = @record{
@@ -137,8 +134,6 @@
 --         return ok_entry, entry_id",
 --      end",
 --   end",
-
-   ## buildstatus.close('rotor.storage required')
 
 ## if false then --[
    local Teste = @record {x: number, y: number}

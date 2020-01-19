@@ -1,11 +1,8 @@
-   require 'buildstatus'
-   ## buildstatus.open 'requiring entity'
-
    require "rotor.bitset_array"
    require "rotor.generational_index"
 
-   require 'rotor.optionals'
-   require 'rotor.optionals.uinteger'
+   require 'rotor.optional'
+   ## generate_optional('uinteger')
    require 'nstd.nlists.nlinkedlist'
 
    global Entity = @record {
@@ -92,5 +89,3 @@
       local possible_index = self:get_storage_index(storage_mask)
       return self:disassociate(possible_index)
    end
-
-   ## buildstatus.close 'entity required'

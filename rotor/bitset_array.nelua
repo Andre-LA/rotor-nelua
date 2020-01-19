@@ -1,6 +1,3 @@
-   require 'buildstatus'
-   ## buildstatus.open 'requiring bitset_array'
-
    local LEFTMOSTBIT: uinteger <const> = (@uinteger)(~((~0) >> 1))
 
    global bitset_array = @record{}
@@ -175,8 +172,6 @@
 
       return result
    end
-
-   ## buildstatus.close 'bitset_array required'
 
 ## if false then --[
    local a: BitsetArray = bitset_array.new(0, BITSETARRAY_OF_ZEROS)
