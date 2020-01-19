@@ -1,6 +1,3 @@
-## if not STORAGE_ALREADY_REQUIRED then
-   ## STORAGE_ALREADY_REQUIRED = true
-
    require 'buildstatus'
    ## buildstatus.open('requiring rotor.storage')
 
@@ -142,7 +139,6 @@
 --   end",
 
    ## buildstatus.close('rotor.storage required')
-## end
 
 ## if false then --[
    local Teste = @record {x: number, y: number}

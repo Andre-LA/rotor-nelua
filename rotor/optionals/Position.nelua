@@ -1,5 +1,3 @@
-## if not OPTIONALS_Opt_Position_ALREADY_REQUIRED then --[
-   ## OPTIONALS_Opt_Position_ALREADY_REQUIRED = true
    require 'buildstatus'
    ## buildstatus.print('requiring optionals.Position')
 
@@ -26,5 +24,3 @@
    end
 
    ## buildstatus.print('optionals.Position required')
-
-## end --]

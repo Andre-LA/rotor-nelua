@@ -1,8 +1,5 @@
-## if not ENTITY_ALREADY_REQUIRED then
    require 'buildstatus'
    ## buildstatus.open 'requiring entity'
-
-   ## ENTITY_ALREADY_REQUIRED = true
 
    require "rotor.bitset_array"
    require "rotor.generational_index"
@@ -97,4 +94,3 @@
    end
 
    ## buildstatus.close 'entity required'
-## end

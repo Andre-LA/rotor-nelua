@@ -1,6 +1,3 @@
-## if not GENERATIONALINDEX_ALREADY_REQUIRED then
-   ## GENERATIONALINDEX_ALREADY_REQUIRED = true
-   
    require 'buildstatus'
    ## buildstatus.open 'requiring generational_index'
    
@@ -23,4 +20,3 @@
    end
       
    ## buildstatus.close 'generational_index required'
-## end

@@ -1,6 +1,3 @@
-## if not NLINKEDLIST then --[
-   ## NLINKEDLIST = true
-
    ## cinclude '<stdlib.h>'
    local function malloc (size: csize): pointer <cimport 'malloc', nodecl> end
    local function free (ptr: pointer): void <cimport 'free', nodecl> end
@@ -240,8 +237,6 @@
 
       return node.data_ptr
    end
-
-## end --]
 
 ## if false then -- if (should test) then [
    do

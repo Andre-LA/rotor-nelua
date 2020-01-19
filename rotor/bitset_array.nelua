@@ -1,8 +1,5 @@
-## if not BITSETARRAY_ALREADY_REQUIRED then
    require 'buildstatus'
    ## buildstatus.open 'requiring bitset_array'
-
-   ## BITSETARRAY_ALREADY_REQUIRED = true
 
    local LEFTMOSTBIT: uinteger <const> = (@uinteger)(~((~0) >> 1))
 
@@ -180,7 +177,6 @@
    end
 
    ## buildstatus.close 'bitset_array required'
-## end
 
 ## if false then --[
    local a: BitsetArray = bitset_array.new(0, BITSETARRAY_OF_ZEROS)
