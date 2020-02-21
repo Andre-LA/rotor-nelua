@@ -15,3 +15,7 @@ end
 function GenerationalIndex:copy(gidx_to_copy: GenerationalIndex): GenerationalIndex
    return GenerationalIndex.new(gidx_to_copy.index, gidx_to_copy.generation)
 end
+
+function GenerationalIndex.__eq(gidx1: GenerationalIndex, gidx2: GenerationalIndex) <inline>
+   return gidx1:equals(gidx2)
+end
