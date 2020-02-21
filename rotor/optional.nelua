@@ -1,49 +1,42 @@
-## local generated_optionals = {}
-## function generate_optional(tyname)
-   ## if generated_optionals[tyname] then return end
-   ## generated_optionals[tyname] = true
-   ## local opname = 'Opt_' .. tyname
+## local make_optional = generalize(function(T)
+   local T = @#[T]#
 
-   global #(opname)# = @record{
-      value: #(tyname)#,
-      not_nil: boolean
+   local OptionalT <codename #['Optional_'..T.name]#> = @record{
+      value: T,
+      filled: boolean
    }
 
-   function #(opname)#:can_get_value() : boolean
-      return self.not_nil
-   end
+   ## OptionalT.value.is_optional = true
+   ## OptionalT.value.subtype = T
 
-   function #(opname)#:get_value(): #(tyname)#
-      assert(self:can_get_value(), 'assert error on a optional: cannot get the value because is considered as nil')
+   function OptionalT:get(): T
+      assert(self.filled, "optional value has no value")
       return self.value
    end
 
-   function #(opname)#:set_value(newvalue: #(tyname)#)
-      self.value = newvalue
-      self.not_nil = true
+   function OptionalT:set(v: T)
+      self.value = v
+      self.filled = true
    end
 
-   function #(opname)#:set_nil()
-      local resetvalue: #(tyname)#
-      self.value = resetvalue
-      self.not_nil = false
+   function OptionalT:clear()
+      self.value = (@T)()
+      self.filled = false
    end
-## end
 
-## local SHOULDTEST = false
+   ## return OptionalT
+## end)
+
+global optional: type = #[make_optional]#
+
+## local SHOULDTEST = true
 ## if SHOULDTEST then
-   ## generate_optional('uinteger')
-   local x: Opt_uinteger
+   local x: optional(uinteger)
 
-   assert(x.value == 0 and (not x.not_nil), 'test #1 error: x should be {value = 0, not_nil = false}')
-   assert(not x:can_get_value(), 'test #2 error: x:can_get_value() should return false')
+   assert(x.value == 0 and not x.filled, 'test #1 error: x should be {value = 0, filled = true}')
 
-   -- this will result in a runtime error, I don't know how to test this
-   --local y = x:get_value()
+   x:set(10)
 
-   x:set_value(10)
-
-   assert(x.value == 10 and x.not_nil, 'test #3 error: x should be {value = 10, not_nil = true}')
-   assert(x.value == x:get_value(), 'test #4 error: x:get_value should returns the x\'s value')
-   assert(x:can_get_value(), 'test #5 error: x:can_get_value() should return true')
+   assert(x.value == 10 and x.filled, 'test #3 error: x should be {value = 10, filled = true}')
+   assert(x.value == x:get(), 'test #4 error: x:get() should returns the x\'s value')
 ## end
