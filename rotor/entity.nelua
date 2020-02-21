@@ -1,52 +1,44 @@
+require 'vector'
+
 require 'rotor.bitset_array'
 require 'rotor.generational_index'
 
 require 'rotor.optional'
-## generate_optional('uinteger')
-require 'nstd.nlists.nlinkedlist'
 
 global Entity = @record{
-   associated_components: nLinkedList, -- nLinkedList(GenerationalIndex),
-   associated_storages: nLinkedList, -- nLinkedList(BitsetArray),
+   associated_components: vector(GenerationalIndex),
+   associated_storages: vector(BitsetArray),
    mask: BitsetArray,
    untracked: boolean
 }
 
 function Entity.new(): Entity
-   local new_entity = (@Entity){
-      associated_components = nLinkedList.new(),
-      associated_storages = nLinkedList.new(),
-      mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS),
-      untracked = true,
-   }
+   local new_entity: Entity;
+
+   new_entity.mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS)
+   new_entity.untracked = true
+
    return new_entity
 end
 
+function Entity:get_component_index(component_gen_idx: GenerationalIndex): optional(uinteger)
+   local result: optional(uinteger);
 
-function Entity:get_component_index(component_gen_idx: GenerationalIndex): Opt_uinteger
-   local result: Opt_uinteger;
-
-   for i = 0_u, < self.associated_components.length do
-      local i_associated_component_ptr = (@GenerationalIndex*)(self.associated_components:get_data_ptr(i))
-      local i_associated_component = $i_associated_component_ptr
-
-      if GenerationalIndex.equals(i_associated_component, component_gen_idx) then
-         result:set_value(i)
+   for i = 0_u, < (@uinteger)(#self.associated_components) do
+      if self.associated_components[i] == component_gen_idx then
+         result:set(i)
       end
    end
 
    return result
 end
 
-function Entity:get_storage_index(storage_mask: BitsetArray): Opt_uinteger
-   local result: Opt_uinteger;
+function Entity:get_storage_index(storage_mask: BitsetArray): optional(uinteger)
+   local result: optional(uinteger);
 
-   for i = 0_u, < self.associated_storages.length do
-      local i_associated_storage_ptr = (@BitsetArray*)(self.associated_storages:get_data_ptr(i))
-      local i_associated_storage = $i_associated_storage_ptr
-
-      if bitset_array.equals(i_associated_storage, storage_mask) then
-         result:set_value(i)
+   for i = 0_u, < (@uinteger)(#self.associated_storages) do
+      if bitset_array.equals(self.associated_storages[i], storage_mask) then
+         result:set(i)
       end
    end
 
@@ -55,22 +47,15 @@ end
 
 function Entity:associate(component_gen_idx: GenerationalIndex, storage_mask: BitsetArray)
    self.mask = bitset_array.bor(self.mask, storage_mask)
-
-   local new_associated_component_ptr = (@GenerationalIndex*)(self.associated_components:push(#@GenerationalIndex))
-   $new_associated_component_ptr = component_gen_idx
-
-   local new_associated_storage_ptr = (@BitsetArray*)(self.associated_storages:push(#@BitsetArray))
-   $new_associated_storage_ptr = storage_mask
+   self.associated_components:push(component_gen_idx)
+   self.associated_storages:push(storage_mask)
 end
 
-function Entity:disassociate(possible_index: Opt_uinteger): boolean
-   if possible_index:can_get_value() then
-      local index = possible_index:get_value()
+function Entity:disassociate(possible_index: optional(uinteger)): boolean
+   if possible_index.filled then
+      local index = possible_index:get()
 
-      local i_associated_storage_ptr = (@BitsetArray*)(self.associated_storages:get_data_ptr(index))
-      local i_associated_storage = $i_associated_storage_ptr
-
-      self.mask = bitset_array.band(self.mask, bitset_array.bnot(i_associated_storage))
+      self.mask = bitset_array.band(self.mask, bitset_array.bnot(self.associated_storages[index]))
       self.associated_components:remove(index)
       self.associated_storages:remove(index)
 
