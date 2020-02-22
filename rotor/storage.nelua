@@ -1,160 +1,116 @@
 require 'rotor.generational_index'
 require 'rotor.optional'
-## generate_optional('uinteger')
-## generate_optional('pointer')
-require 'nstd.nlists.nlinkedlist'
-
-global Storage = @record{
-   next_free_ids: nLinkedList, -- nLinkedList(GenerationalIndex)
-   entries: nLinkedList, -- nLinkedList(pointer),
-   generations: nLinkedList, -- nLinkedList(Opt_uinteger),
-   len: uinteger
-}
-
-local function is_valid_entry(storage_ptr: pointer(Storage), gen_idx: GenerationalIndex): boolean
-   local storage = $storage_ptr
-   local genvalue_ptr = (@Opt_uinteger*)(storage.generations:get_data_ptr(gen_idx.index))
-   local genvalue: Opt_uinteger = $genvalue_ptr
-
-   if not genvalue:can_get_value() then
-      return false
-   elseif gen_idx.generation ~= genvalue:get_value() then
-      return false
-   end
-   return true
-end
-
-function Storage.new(): Storage
-   local newstorage: Storage;
-   local gen_idx_ptr = (@GenerationalIndex*)(newstorage.next_free_ids:push(#@GenerationalIndex))
-   $gen_idx_ptr = GenerationalIndex.new(0, 0)
-   return newstorage
-end
+require 'vector'
 
 
-function Storage:new_entry(entry_size: csize): (pointer, GenerationalIndex)
-   local last_index = self.next_free_ids.length - 1
-   local last_free_id_ptr = (@GenerationalIndex*)(self.next_free_ids:get_data_ptr(last_index))
-   local last_free_id = $last_free_id_ptr
+## local make_storage = generalize(function(_T)
+   local T: type = @#[_T]#
 
-   if self.entries:contains(last_free_id.index) then
-      self.entries:remove(last_free_id.index)
+   local StorageT <codename #['Storage_'.._T.name]#> = @record{
+      next_free_ids: vector(GenerationalIndex),
+      entries: vector(T),
+      generations: vector(optional(uinteger)), -- generation[x] = 0 means that there is not x entry
+      len: uinteger
+   }
+
+   ## StorageT.value.is_storage = true
+   ## StorageT.value.subtype = _T
+
+   local function is_valid_entry(storage_ptr: StorageT*, gidx: GenerationalIndex): boolean
+      local gen = storage_ptr.generations[gidx.index]
+
+      if not gen.filled then
+         return false
+      elseif gidx.generation ~= gen:get() then
+         return false
+      end
+
+      return true
    end
 
-   local new_entry_ptr = self.entries:insert(last_free_id.index, entry_size)
-
-   local gennewvalue: Opt_uinteger;
-   gennewvalue:set_value(last_free_id.generation)
-
-   if self.generations:contains(last_free_id.index) then
-      self.generations:remove(last_free_id.index)
+   function StorageT.new(): StorageT
+      local newstorage: StorageT;
+      newstorage.next_free_ids:push(GenerationalIndex.new(0, 0))
+      return newstorage
    end
 
-   local gen_set_ptr = (@Opt_uinteger*)(self.generations:insert(last_free_id.index, #@Opt_uinteger))
-   $gen_set_ptr = gennewvalue
+   function StorageT:new_entry(entry_content: T): (GenerationalIndex, T)
+      local last_free_id = self.next_free_ids[#self.next_free_ids - 1]
 
-   local new_id = GenerationalIndex.new(last_free_id.index, last_free_id.generation)
+      self.entries:insert(last_free_id.index, entry_content)
 
-   if last_free_id.index >= self.len then
-      self.len = last_free_id.index
-      last_free_id.index = last_free_id.index + 1
-      last_free_id.generation = 0
-   else
-      self.next_free_ids:pop()
+      local newgen: optional(uinteger)
+      newgen:set(last_free_id.generation)
+      self.generations:insert(last_free_id.index, newgen)
+
+      if last_free_id.index > self.len then -- storage needs to grow
+         self.len = last_free_id.index
+         last_free_id.index = last_free_id.index + 1
+         last_free_id.generation = 0
+      else
+         self.next_free_ids:pop()
+      end
+
+      -- return a copy of the gen_idx of this new entry
+      return GenerationalIndex.new(last_free_id.index, last_free_id.generation), entry_content
    end
 
-   $last_free_id_ptr = last_free_id
-
-   -- return a copy of the gen_idx of this new entry
-   return new_entry_ptr, new_id
-end
-
-function Storage:get_entry(gen_idx: GenerationalIndex): Opt_pointer
-   local result: Opt_pointer
-
-   if not is_valid_entry(self, gen_idx) then
+   function StorageT:get_entry(gen_idx: GenerationalIndex): optional(T)
+      local result: optional(T)
+      local gen = self.generations[gen_idx.index]
+      if gen.filled then
+         if gen_idx.generation == gen:get() then
+            result:set(self.entries[gen_idx.index])
+         end
+      end
       return result
    end
 
-   local entry_ptr: pointer = self.entries:get_data_ptr(gen_idx.index)
-   result:set_value(entry_ptr)
+   function StorageT:remove_entry(gen_idx: GenerationalIndex): boolean
+      local try_get = self:get_entry(gen_idx)
+      if not try_get.filled then
+         return false
+      end
 
-   return result
-end
+      self.entries[gen_idx.index] = (@T)()
+      local gen = self.generations[gen_idx.index]
+      gen:clear()
 
-function Storage:remove_entry(gen_idx: GenerationalIndex): boolean
-   if not is_valid_entry(self, gen_idx) then
+      if gen_idx.index == self.len then
+         local last_i = 0_u
+         for i = 0_u, < self.len do
+            local gen_i = self.generations[i]
+            if gen_i.filled then
+               last_i = i
+            end
+         end
+         self.len = last_i
+      end
+
+      self.next_free_ids:push(GenerationalIndex.new(gen_idx.index, gen_idx.generation + 1))
+
       return false
    end
 
-   if self.entries:contains(gen_idx.index) then
-      self.entries:remove(gen_idx.index)
-   end
+   ## return StorageT
+## end)
 
-   local entry_set_gptr = self.entries:insert(gen_idx.index, #@pointer)
-   local entry_set_ptr = (@pointer*)(entry_set_gptr)
-   $entry_set_ptr = nilptr
+global Storage = #[make_storage]#
 
-   local gennewvalue_ptr = (@Opt_uinteger*)(self.generations:get_data_ptr(gen_idx.index))
-   local gennewvalue = $gennewvalue_ptr
-   gennewvalue:set_nil()
-   $gennewvalue_ptr = gennewvalue
+## if true then --[
+   local R = @record{x: number, y: number}
+   function R:print() print("R {x = ", self.x, ", y = ", self.y, "}") end
 
-   if gen_idx.index == self.len then
-      local last_i = 0_u
-      for i=0_u, < self.len do
-         local genvalue_ptr = (@Opt_uinteger*)(self.generations:get_data_ptr(i))
-         local genvalue = $genvalue_ptr
-         if genvalue:can_get_value() then
-            last_i = i
-         end
-      end
-      self.len = last_i
-   end
+   local StorageR: type = @Storage(R);
+   local storage_test: StorageR = StorageR.new()
 
-   local next_free_id_ptr = (@GenerationalIndex*)(self.next_free_ids:push(#@GenerationalIndex))
-   $next_free_id_ptr = GenerationalIndex.new(gen_idx.index, gen_idx.generation + 1)
+   local new_entry_id, new_entry = storage_test:new_entry( (@R){x = 123, y = 789} )
 
-   return true
-end
+   local possible_entry = storage_test:get_entry(new_entry_id)
+   assert(possible_entry.filled, 'test error: obtained entry from storage is no filled')
 
---   Iterators are NYI feature",
---   function " .. storagetypename .. ".iterate_entries(storage)",
---      local i, entries_len, entry_id = 0, storage.len, new_id(0, 0)",
---
---      return function ()",
---         local ok_entry;",
---
---         while ok_entry == nil and i < entries_len do",
---            i = i + 1",
---            entry_id.index, entry_id.generation = i, (storage.generations[i] or -1)",
---            ok_entry = " .. storagetypename .. ".get_entry(storage, entry_id)",
---         end",
---
---         return ok_entry, entry_id",
---      end",
---   end",
-
-## if false then --[
-   local Teste = @record{x: number, y: number}
-   function Teste:__tostring() print("Teste {x = ", self.x, ", y = ", self.y, "}") end
-
-   print 'NEW'
-   local storage_test = Storage.new()
-
-   print 'NEW ENTRY'
-   local new_entry_ptr, new_entry_id = storage_test:new_entry(#@Teste)
-   local new_entry_Tptr = (@Teste*)(new_entry_ptr)
-   $new_entry_Tptr = (@Teste){x = 777, y = 1333}
-
-   print 'GET ENTRY'
-   local possible_entry_ptr = storage_test:get_entry(new_entry_id)
-   assert(possible_entry_ptr:can_get_value(), 'test error: cannot get value')
-
-   local entry_ptr = (@Teste*)(possible_entry_ptr:get_value())
-   local entry: Teste = $entry_ptr
-
-   entry:__tostring()
-   print 'storage test succeed'
-   --]]
+   local entry = possible_entry:get()
+   assert(entry.x == 123 and entry.y == 789, 'test error: entry values are different')
 ## end --]
+
+
