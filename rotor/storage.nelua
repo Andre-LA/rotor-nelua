@@ -3,10 +3,10 @@ require 'rotor.optional'
 require 'vector'
 
 
-## local make_storage = generalize(function(_T)
-   local T: type = @#[_T]#
+## local make_storage = generalize(function(T)
+   local T: type = @#[T]#
 
-   local StorageT <codename #['Storage_'.._T.name]#> = @record{
+   local StorageT <codename #['Storage_'..T.codename]#> = @record{
       next_free_ids: vector(GenerationalIndex),
       entries: vector(T),
       generations: vector(optional(uinteger)), -- generation[x] = 0 means that there is not x entry
@@ -14,7 +14,7 @@ require 'vector'
    }
 
    ## StorageT.value.is_storage = true
-   ## StorageT.value.subtype = _T
+   ## StorageT.value.subtype = T
 
    local function is_valid_entry(storage_ptr: StorageT*, gidx: GenerationalIndex): boolean
       local gen = storage_ptr.generations[gidx.index]

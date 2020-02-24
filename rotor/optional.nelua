@@ -1,7 +1,7 @@
 ## local make_optional = generalize(function(T)
    local T = @#[T]#
 
-   local OptionalT <codename #['Optional_'..T.name]#> = @record{
+   local OptionalT <codename #['Optional_'..T.codename]#> = @record{
       value: T,
       filled: boolean
    }
