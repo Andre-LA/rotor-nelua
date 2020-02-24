@@ -30,18 +30,23 @@
 global optional: type = #[make_optional]#
 
 ## if true then
-   local R = @record{f: integer}
+   local R = @record{v: integer}
    local optR: optional(R);
 
-   local r = (@R){f = 123}
+   assert(not optR.filled, "test error: optR is marked as filled, but it's with no value")
+
+   local r = (@R){v = 123}
    optR:set(r)
+
+   assert(optR.filled, "test error: optR is marked as not filled, but it's with value")
+   assert(optR:get().v == r.v and optR.value.v == r.v, "test error: optR's value is diffent from original value")
 
    local x: optional(uinteger)
 
-   assert(x.value == 0 and not x.filled, 'test #1 error: x should be {value = 0, filled = true}')
+   assert(x.value == 0 and not x.filled, 'test error: x should be {value = 0, filled = false}')
 
    x:set(10)
 
-   assert(x.value == 10 and x.filled, 'test #3 error: x should be {value = 10, filled = true}')
-   assert(x.value == x:get(), 'test #4 error: x:get() should returns the x\'s value')
+   assert(x.value == 10 and x.filled, 'test error: x should be {value = 10, filled = true}')
+   assert(x.value == x:get(), "test error: x:get() should returns the x's value")
 ## end
