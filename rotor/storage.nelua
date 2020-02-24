@@ -10,7 +10,7 @@ require 'vector'
       next_free_ids: vector(GenerationalIndex),
       entries: vector(T),
       generations: vector(optional(uinteger)), -- generation[x] = 0 means that there is not x entry
-      len: uinteger
+      len: isize
    }
 
    ## StorageT.value.is_storage = true
@@ -34,7 +34,7 @@ require 'vector'
       return newstorage
    end
 
-   function StorageT:new_entry(entry_content: T): (GenerationalIndex, T)
+   function StorageT:new_entry(entry_content: T): (GenerationalIndex, T*)
       local last_free_id = self.next_free_ids[#self.next_free_ids - 1]
 
       self.entries:insert(last_free_id.index, entry_content)
@@ -52,15 +52,15 @@ require 'vector'
       end
 
       -- return a copy of the gen_idx of this new entry
-      return GenerationalIndex.new(last_free_id.index, last_free_id.generation), entry_content
+      return GenerationalIndex.new(last_free_id.index, last_free_id.generation), &entry_content
    end
 
-   function StorageT:get_entry(gen_idx: GenerationalIndex): optional(T)
-      local result: optional(T)
+   function StorageT:get_entry(gen_idx: GenerationalIndex): optional(T*)
+      local result: optional(T*)
       local gen = self.generations[gen_idx.index]
       if gen.filled then
          if gen_idx.generation == gen:get() then
-            result:set(self.entries[gen_idx.index])
+            result:set(&self.entries[gen_idx.index])
          end
       end
       return result

@@ -2,6 +2,7 @@ local LEFTMOSTBIT: uinteger <const> = (@uinteger)(~((~0) >> 1))
 
 global bitset_array = @record{}
 global BitsetArray: type = @array(uinteger, 4)
+
 global BITSETARRAY_OF_ZEROS: BitsetArray <const> = {0, 0, 0, 0}
 global BITSETARRAY_OF_ONES: BitsetArray <const>  = {1, 1, 1, 1}
 global BITSETARRAY_OF_ONE: BitsetArray <const>   = {0, 0, 0, 1}

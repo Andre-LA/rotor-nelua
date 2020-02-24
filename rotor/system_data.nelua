@@ -17,7 +17,7 @@ global SystemData = @record{
    mask_write: BitsetArray,
    required_storages: vector(BitsetArray),
    components_indexes: vector(vector(GenerationalIndex)),
-   available_indexes: vector(uinteger)
+   available_indexes: vector(isize)
 }
 
 -- (read_components: nLinkedList(BitsetArray), write_components: nLinkedList(BitsetArray)): SystemData
@@ -78,13 +78,14 @@ function SystemData:update(entities_storage: Storage(Entity)*, untracked_ids: ve
                self.components_indexes:remove(idx_to_insert)
             end
 
-            self.components_indexes:insert(idx_to_insert, collect_components(self, &i_entity))
+            local collected_components = collect_components(self, i_entity)
+            self.components_indexes:insert(idx_to_insert, collected_components)
          end
       end
    end
 end
 
-function SystemData:mark_available(idx: uinteger)
+function SystemData:mark_available(idx: isize)
    self.available_indexes:push(idx)
    local idx_components_indexes = self.components_indexes[idx]
    idx_components_indexes:clear()

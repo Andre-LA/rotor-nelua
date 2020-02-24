@@ -1,9 +1,9 @@
 global GenerationalIndex = @record{
-   index: uinteger,
+   index: isize,
    generation: uinteger
 }
 
-function GenerationalIndex.new(idx: uinteger, gen: uinteger): GenerationalIndex
+function GenerationalIndex.new(idx: isize, gen: uinteger): GenerationalIndex
    local new_generational_index = (@GenerationalIndex){index = idx, generation = gen};
    return new_generational_index
 end
