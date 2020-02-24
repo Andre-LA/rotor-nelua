@@ -87,7 +87,7 @@ local systems_data = (@SystemsData){
 -- rightmost_system will use the locals
 -- anyway, do what you think is better, is just a function ;)
 
-local function movement_system(mov_system_data: SystemData, velocity_storage: VelocityStorage, position_storage: PositionStorage)
+local function movement_system(mov_system_data: SystemData*, velocity_storage: VelocityStorage*, position_storage: PositionStorage*)
    for i = 0, < #mov_system_data.components_indexes do
       local ids = mov_system_data.components_indexes[i]
 

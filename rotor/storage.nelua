@@ -35,9 +35,13 @@ require 'vector'
    end
 
    function StorageT:new_entry(entry_content: T): (GenerationalIndex, T*)
+      if #self.next_free_ids == 0 then
+         self.next_free_ids:push(GenerationalIndex.new(0, 0))
+      end
       local last_free_id = self.next_free_ids[#self.next_free_ids - 1]
 
       self.entries:insert(last_free_id.index, entry_content)
+      local entry: T* = &self.entries[last_free_id.index]
 
       local newgen: optional(uinteger)
       newgen:set(last_free_id.generation)
@@ -52,7 +56,7 @@ require 'vector'
       end
 
       -- return a copy of the gen_idx of this new entry
-      return GenerationalIndex.new(last_free_id.index, last_free_id.generation), &entry_content
+      return GenerationalIndex.new(last_free_id.index, last_free_id.generation), entry
    end
 
    function StorageT:get_entry(gen_idx: GenerationalIndex): optional(T*)

@@ -21,7 +21,7 @@ global SystemData = @record{
 }
 
 -- (read_components: nLinkedList(BitsetArray), write_components: nLinkedList(BitsetArray)): SystemData
-function SystemData.new(read_components: vector(BitsetArray), write_components: vector(BitsetArray)): SystemData
+function SystemData.new(read_components: vector(BitsetArray)*, write_components: vector(BitsetArray)*): SystemData
    local mask_read = bitset_array.new(1, BITSETARRAY_OF_ZEROS);
    local mask_write = bitset_array.new(1, BITSETARRAY_OF_ZEROS);
 
@@ -56,7 +56,7 @@ local function collect_components(system_data: SystemData*, entity_i: Entity*): 
    return components_tuple
 end
 
-function SystemData:update(entities_storage: Storage(Entity)*, untracked_ids: vector(GenerationalIndex))
+function SystemData:update(entities_storage: Storage(Entity)*, untracked_ids: vector(GenerationalIndex)*)
    for i = 0_u, < #untracked_ids do
       local entity_id = untracked_ids[i]
       local possible_i_entity = entities_storage:get_entry(entity_id)
