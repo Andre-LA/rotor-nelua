@@ -1,15 +1,10 @@
 -- ## cflags '-fsanitize=address'
 
-local ENTITY_COUNT: uinteger <comptime> = 15_u
+local ENTITY_COUNT: uinteger <comptime> = 50000_u
 
 require 'math'
 require 'os'
-
-require ("rotor.bitset_array")
-require ("rotor.bitset_array")
-require ("rotor.entity")
-require ("rotor.storage")
-require ("rotor.system_data")
+require 'rotor'
 
 local Vec2 = @record {
    x: integer,
@@ -151,6 +146,7 @@ local untracked_entities_ids: vector(GenerationalIndex);
 -- let's create 1 entity!
 print 'creating!'
 for i = 0, < ENTITY_COUNT do
+
    -- create an entity in the entities storage and get this new entity
    local new_entity_id, new_entity = storages.entity:new_entry(Entity.new())
    e_ids:push(new_entity_id)
