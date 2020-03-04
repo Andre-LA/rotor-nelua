@@ -50,7 +50,7 @@ require 'vector'
       newgen:set(last_free_id_gen)
       self.generations:insert(last_free_id_idx, newgen)
 
-      if last_free_id.index > self.len then -- storage needs to grow
+      if last_free_id.index >= self.len then -- storage needs to grow
          self.len = last_free_id.index
          last_free_id.index = last_free_id.index + 1
          last_free_id.generation = 0
