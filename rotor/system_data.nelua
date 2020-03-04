@@ -56,7 +56,7 @@ local function collect_components(system_data: SystemData*, entity_i: Entity*): 
    return components_tuple
 end
 
-function SystemData:update(entities_storage: Storage(Entity)*, untracked_ids: vector(GenerationalIndex)*)
+function SystemData:update(entities_storage: pointer(Storage(Entity)), untracked_ids: pointer(vector(GenerationalIndex)))
    for i = 0_u, < #untracked_ids do
       local entity_id = untracked_ids[i]
       local possible_i_entity = entities_storage:get_entry(entity_id)

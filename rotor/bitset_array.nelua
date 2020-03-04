@@ -5,7 +5,7 @@ global BitsetArray: type = @array(uinteger, 4)
 
 global BITSETARRAY_OF_ZEROS: BitsetArray <const> = {0, 0, 0, 0}
 global BITSETARRAY_OF_ONES: BitsetArray <const>  = {1, 1, 1, 1}
-global BITSETARRAY_OF_ONE: BitsetArray <const>   = {0, 0, 0, 1}
+global BITSETARRAY_OF_ONE: BitsetArray <const>   = {1, 0, 0, 0}
 
 function bitset_array.new (initial_length: uinteger, initial_value: BitsetArray): BitsetArray
    local new_bitset_array: BitsetArray;
