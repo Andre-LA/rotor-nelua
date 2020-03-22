@@ -16,8 +16,8 @@ require 'vector'
    ## StorageT.value.is_storage = true
    ## StorageT.value.subtype = T
 
-   local function is_valid_entry(storage_ptr: StorageT*, gidx: GenerationalIndex): boolean
-      local gen = storage_ptr.generations[gidx.index]
+   local function is_valid_entry(storage: StorageT*, gidx: GenerationalIndex): boolean
+      local gen = storage.generations[gidx.index]
 
       if not gen.filled then
          return false
