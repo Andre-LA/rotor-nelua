@@ -44,7 +44,6 @@ require 'vector'
       local last_free_id_gen = last_free_id.generation
 
       self.entries:insert(last_free_id_idx, entry_content)
-      local entry: T* = &self.entries[last_free_id_idx]
 
       local newgen: optional(uinteger);
       newgen:set(last_free_id_gen)
@@ -58,7 +57,8 @@ require 'vector'
          self.next_free_ids:pop()
       end
 
-      -- return a copy of the gen_idx of this new entry
+      -- return a copy of the gen_idx of this new entry and a pointer of the entry content
+      local entry: T* = &self.entries[last_free_id_idx]
       return GenerationalIndex.new(last_free_id_idx, last_free_id_gen), entry
    end
 
