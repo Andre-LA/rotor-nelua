@@ -116,10 +116,6 @@ global Storage = #[make_storage]#
       y: number
    }
 
-   function Vec:print()
-      print("R {x = ", self.x, ", y = ", self.y, "}")
-   end
-
    local StorageVec: type = @Storage(Vec);
    local storage_test: StorageVec = StorageVec.new()
 
