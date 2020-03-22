@@ -29,7 +29,7 @@
 
 global optional: type = #[make_optional]#
 
-## if true then
+## if TEST then
    local R = @record{v: integer}
    local optR: optional(R);
 
