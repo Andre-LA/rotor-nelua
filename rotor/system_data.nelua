@@ -47,7 +47,7 @@ local function collect_components(system_data: SystemData*, entity_i: Entity*): 
    for i = 0_u, < #system_data.required_storages do
       for j = 0_u, < #entity_i.associated_storages do
          if bitset_array.equals(system_data.required_storages[i], entity_i.associated_storages[j]) then
-            components_tuple:push(entity_i.associated_components[i])
+            components_tuple:push(entity_i.associated_components[j])
             break
          end
       end
