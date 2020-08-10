@@ -1,0 +1,297 @@
+-- note: requires Raylib, see:
+require 'raylib'
+require 'rotor'
+require 'math'
+
+## if NPROF then
+require 'nprof'
+local nprof: NProf = {}
+## end
+
+## ENTITY_MAX = ENTITY_MAX or 5000
+
+local e_count = 0_u
+local E_MAX <comptime>= #[ ENTITY_MAX ]#
+
+local function log(msg: stringview)
+   ## if not NOLOG then
+      print(msg)
+   ## end
+end
+
+local function log_id(msg: stringview, id: GenerationalIndex)
+   ## if not NOLOG then
+      print(msg, tostring(id))
+   ## end
+end
+
+local Position = @record{
+   x: number,
+   y: number,
+}
+
+local Velocity = @record{
+   x: number,
+   y: number,
+}
+
+local Circle = @record{
+   color: Color
+}
+
+local EntityInfo = @record{
+   dead: boolean,
+   entity_id: GenerationalIndex,
+   position_id: GenerationalIndex,
+   velocity_id: GenerationalIndex,
+   circle_id: GenerationalIndex,
+   entity_info_id: GenerationalIndex,
+}
+
+local storages: record{
+   entity: Storage(Entity),
+   position: Storage(Position),
+   velocity: Storage(Velocity),
+   circle: Storage(Circle),
+   entity_info: Storage(EntityInfo),
+} = {
+   entity = (@Storage(Entity)).new(),
+   position = (@Storage(Position)).new(),
+   velocity = (@Storage(Velocity)).new(),
+   circle = (@Storage(Circle)).new(),
+   entity_info = (@Storage(EntityInfo)).new(),
+}
+
+local masks: record{
+   position: BitsetArray,
+   velocity: BitsetArray,
+   circle: BitsetArray,
+   entity_info: BitsetArray,
+} = {
+   position = bitset_array.lshift(BITSETARRAY_OF_ONE, 0),
+   velocity = bitset_array.lshift(BITSETARRAY_OF_ONE, 1),
+   circle = bitset_array.lshift(BITSETARRAY_OF_ONE, 2),
+   entity_info = bitset_array.lshift(BITSETARRAY_OF_ONE, 3),
+}
+
+local ba_vel_read: vector(BitsetArray)  = { bitset_array.copy(masks.velocity), bitset_array.copy(masks.entity_info) }
+local ba_vel_write: vector(BitsetArray) = { bitset_array.copy(masks.position) }
+
+local ba_cir_read: vector(BitsetArray) = { bitset_array.copy(masks.position), bitset_array.copy(masks.circle), bitset_array.copy(masks.entity_info) }
+local ba_cir_write: vector(BitsetArray) = {  }
+
+local ba_einfo_read: vector(BitsetArray) = { bitset_array.copy(masks.entity_info) }
+local ba_einfo_write: vector(BitsetArray) = {  }
+
+local systems: record {
+   velocity: SystemData,
+   circle_painter: SystemData,
+   entity_destroyer_system: SystemData,
+} = {
+   velocity = SystemData.new(ba_vel_read, ba_vel_write),
+   circle_painter = SystemData.new(ba_cir_read, ba_cir_write),
+   entity_destroyer_system = SystemData.new(ba_einfo_read, ba_einfo_write),
+}
+
+local CircleEntity = @record{}
+
+function CircleEntity.new(entity_i: uinteger)
+   local entity_id, entity = storages.entity:new_entry(Entity.new())
+   log_id('new entity: ', entity_id)
+
+   local position_id, position = storages.position:new_entry({ 0,0 })
+   entity:associate(position_id, masks.position)
+
+   local velocity_id, velocity = storages.velocity:new_entry({ math.random(25, 50), math.random(25, 50) })
+   entity:associate(velocity_id, masks.velocity)
+
+   local circle_id, circle = storages.circle:new_entry({ color = RAYWHITE })
+   entity:associate(circle_id, masks.circle)
+
+   local entity_info_id, entity_info = storages.entity_info:new_entry({
+      entity_id = entity_id,
+      position_id = position_id,
+      velocity_id = velocity_id,
+      circle_id = circle_id
+   })
+   entity_info.entity_info_id = entity_info_id
+   entity:associate(entity_info_id, masks.entity_info)
+
+   systems.velocity:update(entity)
+   systems.circle_painter:update(entity)
+   systems.entity_destroyer_system:update(entity)
+end
+
+function CircleEntity.remove(e_info: EntityInfo)
+   storages.entity:remove_entry(e_info.entity_id)
+
+   storages.position:remove_entry(e_info.position_id)
+   storages.velocity:remove_entry(e_info.velocity_id)
+   storages.circle:remove_entry(e_info.circle_id)
+   storages.entity_info:remove_entry(e_info.entity_info_id)
+end
+
+local function velocity_system(sysdata: SystemData*)
+   for i = 0, < #sysdata.components_indexes do
+      local ids = sysdata.components_indexes[i]
+      if #ids > 0 then
+         local velocity_id = ids[0]
+         local position_id = ids[1]
+         local entity_info_id = ids[2]
+
+         local opt_velocity = storages.velocity:get_entry(velocity_id)
+         local opt_position = storages.position:get_entry(position_id)
+         local opt_entity_info = storages.entity_info:get_entry(entity_info_id)
+
+         if opt_velocity.filled and opt_position.filled and opt_entity_info.filled then
+            local velocity = opt_velocity:get()
+            local position = opt_position:get()
+            local entity_info = opt_entity_info:get()
+
+            if entity_info.dead then
+               continue
+            end
+
+            local dt = Raylib.GetFrameTime()
+
+            position.x = position.x + velocity.x * dt
+            position.y = position.y + velocity.y * dt
+
+            if position.x > 800 or position.y > 600 then
+               if math.random(0.0, 1.0) < 0.4 then
+                  entity_info.dead = true
+                  log_id('DEAD TRUE: ', entity_info.entity_id)
+               else
+                  position.x, position.y = 0, 0
+               end
+            end
+         else
+            sysdata:mark_available(i)
+         end
+      end
+   end
+end
+
+local function circle_painter_system(sysdata: SystemData*)
+   for i = 0, < #sysdata.components_indexes do
+      --print('circle_painter_system[' .. tostring(i) .. ']')
+      local ids = sysdata.components_indexes[i]
+      if #ids > 0 then
+         local position_id = ids[0]
+         local circle_id = ids[1]
+         local entity_info_id = ids[2]
+
+         local opt_position = storages.position:get_entry(position_id)
+         local opt_circle = storages.circle:get_entry(circle_id)
+         local opt_entity_info = storages.entity_info:get_entry(entity_info_id)
+
+         --print('  ids: , ' .. tostring(position_id)  ..', ' .. tostring(circle_id)  ..', ' .. tostring(entity_info_id) )
+         --print('  filleds: ', opt_position.filled, opt_circle.filled, opt_entity_info.filled )
+
+         if opt_position.filled and opt_circle.filled and opt_entity_info.filled then
+            local position = opt_position:get()
+            local circle = opt_circle:get()
+            local entity_info = opt_entity_info:get()
+
+            if entity_info.dead then
+               continue
+            end
+
+            local x: cint = position.x // 1
+            local y: cint = position.y // 1
+
+            ## if not NODRAW then
+               --print'    draw'
+               Raylib.DrawCircle(x, y, 5, circle.color)
+            ## end
+         else
+            --print('  i:> ' .. tostring(i))
+            sysdata:mark_available(i)
+         end
+      end
+   end
+end
+
+local function entity_destroyer_system(sysdata: SystemData*)
+   for i = 0, < #sysdata.components_indexes do
+      local ids = sysdata.components_indexes[i]
+      if #ids > 0 then
+         local entity_info_id = ids[0]
+         local opt_entity_info = storages.entity_info:get_entry(entity_info_id)
+
+         if opt_entity_info.filled then
+            local entity_info = opt_entity_info:get()
+
+            if entity_info.dead then
+               log'entity remove!'
+               CircleEntity.remove(entity_info)
+               e_count = e_count - 1
+            end
+         else
+            sysdata:mark_available(i)
+         end
+      end
+   end
+end
+
+## if NPROF then
+nprof:push'app' -- [
+## end
+
+Raylib.InitWindow(800, 600, "Rotor-nelua ECS test")
+
+Raylib.SetTargetFPS(60)
+
+local function frame()
+   local fps = Raylib.GetFPS()
+   local pause = fps < 50
+
+   --print('--->')
+   for i = 1, 100 do
+      if e_count < E_MAX then
+         CircleEntity.new(e_count)
+         e_count = e_count + 1
+      end
+   end
+
+   if not pause then
+      velocity_system(systems.velocity)
+   end
+
+   Raylib.BeginDrawing()
+      Raylib.ClearBackground(BLACK)
+
+      if not pause then
+         circle_painter_system(systems.circle_painter)
+      end
+
+      ## if not NOFPS then
+      Raylib.DrawText(
+         "Entities count: " .. tostring(e_count) .. "/" .. tostring(E_MAX) ..
+         '\nFPS: ' .. tostring(fps),
+         10, 10, 24, pause and RED or SKYBLUE
+      )
+      ## end
+   Raylib.EndDrawing()
+
+   if not pause then
+      entity_destroyer_system(systems.entity_destroyer_system)
+   end
+   --print('<---')
+end
+
+while not Raylib.WindowShouldClose() do
+   ## if NPROF then
+   nprof:push'frame' -- [
+   ## end
+   frame()
+   ## if NPROF then
+   nprof:pop() -- ]
+   ## end
+end
+
+Raylib.CloseWindow()
+
+## if NPROF then
+nprof:pop() -- ]
+## end

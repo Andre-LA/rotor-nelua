@@ -1,0 +1,93 @@
+require 'os'
+require 'string'
+
+## NPROF_MAX = NPROF_MAX or 128
+local MAX <comptime> = #[NPROF_MAX]#
+
+local NProfItem = @record{
+   title: stringview,
+   level: uinteger,
+   start: number,
+   _end: number,
+}
+
+function NProfItem:__tostring(): string
+   return self.title .. '{' .. tostring(self.start) .. ';' .. tostring(self._end) .. ';' .. self.level .. '}'
+end
+
+global NProf = @record{
+   items: NProfItem[MAX],
+   current_level: uinteger,
+   idx_to_pop: uinteger,
+   next_idx: uinteger,
+}
+
+function NProf:push(title: stringview)
+   self.current_level = self.current_level + 1
+   self.idx_to_pop = self.idx_to_pop + 1
+
+   check(
+      self.next_idx < MAX,
+      #['next_idx reached MAX, use -D NPROF_MAX=number to increase the MAX; MAX: ' .. NPROF_MAX]#
+   )
+
+   self.items[self.next_idx] = (@NProfItem){
+      title = title,
+      level = self.current_level,
+      start = os.clock(),
+   }
+
+   self.next_idx = self.next_idx + 1
+end
+
+function NProf:pop()
+   check(self.idx_to_pop >= 0, 'nprof problem: there is no prof item to pop')
+
+   self.items[self.idx_to_pop - 1]._end = os.clock()
+   self.idx_to_pop = self.idx_to_pop - 1
+   self.current_level = self.current_level - 1
+end
+
+function NProf:report(): string
+   local result: string = ""
+
+   for i = 0, < self.next_idx - 1 do
+      result = result .. tostring(self.items[i]) .. '\n'
+   end
+
+   return result
+end
+
+function NProf:draw()
+   local first_start = self.items[0].start
+   local last_end = self.items[self.next_idx-1]._end
+
+   for i = 0, self.next_idx - 1 do
+      local px = (i / self.next_idx)
+
+      --Raylib.DrawRectangleV()
+   end
+end
+
+## if TEST then
+   local nprof: NProf = {}
+
+   nprof:push'first for'
+
+   local x: uinteger, y: uinteger = 0, 0
+
+   for i = 0, 3 do
+      nprof:push('second for (' .. i .. ')')
+
+      x, y = x + 1, 0
+      for j = 0, 10 do
+         y = y + 1
+      end
+
+      nprof:pop()
+   end
+
+   nprof:pop()
+
+   print(nprof:report())
+## end

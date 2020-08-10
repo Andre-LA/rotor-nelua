@@ -1,7 +1,7 @@
 ## local make_optional = generalize(function(T)
    local T = @#[T]#
 
-   local OptionalT <codename #['Optional_'..T.codename]#> = @record{
+   local OptionalT <nickname #[string.format('optional(%s)', T)]#> = @record{
       value: T,
       filled: boolean
    }
@@ -10,7 +10,6 @@
    ## OptionalT.value.subtype = T
 
    function OptionalT:get(): T
-      assert(self.filled, "optional value has no value")
       return self.value
    end
 

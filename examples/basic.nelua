@@ -154,12 +154,12 @@ for i = 0, < ENTITY_COUNT do
    -- create the components in their respective storages.
    -- storage.new_entry(value) returns a generational_index, it's used as an ID
    -- create_position(x, y) returns just a new very simple table, remember?
-   math.randomseed(os.time_default())
+   math.randomseed(os.time())
    local new_position_id, new_position = storages.position:new_entry((@Position){
       x = (@integer)(math.random() * 200 - 100.0), y = (@integer)(i)
    })
 
-   math.randomseed(os.time_default())
+   math.randomseed(os.time())
    local new_velocity_id, new_velocity = storages.velocity:new_entry((@Velocity){
       x = (@integer)(math.random() * 400 - 200.0), y = 0
    })

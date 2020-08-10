@@ -20,7 +20,6 @@ global SystemData = @record{
    available_indexes: vector(isize)
 }
 
--- (read_components: nLinkedList(BitsetArray), write_components: nLinkedList(BitsetArray)): SystemData
 function SystemData.new(read_components: vector(BitsetArray)*, write_components: vector(BitsetArray)*): SystemData
    local mask_read = bitset_array.new(1, BITSETARRAY_OF_ZEROS);
    local mask_write = bitset_array.new(1, BITSETARRAY_OF_ZEROS);
@@ -40,53 +39,39 @@ function SystemData.new(read_components: vector(BitsetArray)*, write_components:
    return new_system_data
 end
 
-local function collect_components(system_data: SystemData*, entity_i: Entity*): vector(GenerationalIndex)
-   local components_tuple: vector(GenerationalIndex);
+local function collect_components(system_data: SystemData*, entity_i: Entity*, out_result: vector(GenerationalIndex)*)
+   out_result:clear()
 
    -- for each required storage, insert the components indexes respectively
    for i = 0_u, < #system_data.required_storages do
       for j = 0_u, < #entity_i.associated_storages do
          if bitset_array.equals(system_data.required_storages[i], entity_i.associated_storages[j]) then
-            components_tuple:push(entity_i.associated_components[j])
+            out_result:push(entity_i.associated_components[j])
             break
          end
       end
    end
-
-   return components_tuple
 end
 
-function SystemData:update(entities_storage: pointer(Storage(Entity)), untracked_ids: pointer(vector(GenerationalIndex)))
-   for i = 0_u, < #untracked_ids do
-      local entity_id = untracked_ids[i]
-      local possible_i_entity = entities_storage:get_entry(entity_id)
+function SystemData:update(entity: Entity*)
+   local masks_intersection = bitset_array.band(self.mask, entity.mask)
 
-      if possible_i_entity.filled then -- this is a new entity
-         local i_entity = possible_i_entity:get()
-         local masks_intersection = bitset_array.band(i_entity.mask, self.mask)
+   if bitset_array.equals(masks_intersection, self.mask) then
+      local idx_to_insert: isize = 0
 
-         if bitset_array.equals(masks_intersection, self.mask) then
-            local idx_to_insert: isize = 0
-
-            if #self.available_indexes > 0 then
-               local idx_to_insert = self.available_indexes:pop()
-            else
-               idx_to_insert = #self.components_indexes
-            end
-
-            if idx_to_insert < #self.components_indexes then
-               self.components_indexes:remove(idx_to_insert)
-            end
-
-            local collected_components = collect_components(self, i_entity)
-            self.components_indexes:insert(idx_to_insert, collected_components)
-         end
+      if #self.available_indexes > 0 then
+         idx_to_insert = self.available_indexes:pop()
+      else
+         idx_to_insert = #self.components_indexes
+         self.components_indexes:push({})
       end
+
+      collect_components(self, entity, self.components_indexes[idx_to_insert])
    end
 end
 
 function SystemData:mark_available(idx: isize)
    self.available_indexes:push(idx)
-   local idx_components_indexes = self.components_indexes[idx]
+   local idx_components_indexes: vector(GenerationalIndex)* = self.components_indexes[idx]
    idx_components_indexes:clear()
 end
