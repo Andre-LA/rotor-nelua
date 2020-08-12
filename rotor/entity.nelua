@@ -33,6 +33,13 @@ function Entity:get_component_index(component_gen_idx: GenerationalIndex): optio
    return result
 end
 
+function Entity:clear()
+   self.associated_components:destroy()
+   self.associated_storages:destroy()
+   self.mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS)
+   self.untracked = true
+end
+
 function Entity:get_storage_index(storage_mask: BitsetArray): optional(uinteger)
    local result: optional(uinteger);
 

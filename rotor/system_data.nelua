@@ -5,6 +5,7 @@ require 'rotor.storage'
 
 local function union(a: vector(BitsetArray)*, b: vector(BitsetArray)*): vector(BitsetArray)
    local result: vector(BitsetArray);
+   result:reserve(#a + #b)
 
    for i = 0, < #a do result:push(a[i]) end
    for i = 0, < #b do result:push(b[i]) end
@@ -41,6 +42,7 @@ end
 
 local function collect_components(system_data: SystemData*, entity_i: Entity*, out_result: vector(GenerationalIndex)*)
    out_result:clear()
+   out_result:reserve(#system_data.required_storages)
 
    -- for each required storage, insert the components indexes respectively
    for i = 0_u, < #system_data.required_storages do

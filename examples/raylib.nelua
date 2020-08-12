@@ -123,6 +123,11 @@ function CircleEntity.new(entity_i: uinteger)
 end
 
 function CircleEntity.remove(e_info: EntityInfo)
+   local opt_entity = storages.entity:get_entry(e_info.entity_id)
+   check(opt_entity.filled, 'entity to remove not found')
+   local entity: Entity* = opt_entity:get()
+   entity:clear()
+
    storages.entity:remove_entry(e_info.entity_id)
 
    storages.position:remove_entry(e_info.position_id)
@@ -174,7 +179,6 @@ end
 
 local function circle_painter_system(sysdata: SystemData*)
    for i = 0, < #sysdata.components_indexes do
-      --print('circle_painter_system[' .. tostring(i) .. ']')
       local ids = sysdata.components_indexes[i]
       if #ids > 0 then
          local position_id = ids[0]
@@ -185,8 +189,6 @@ local function circle_painter_system(sysdata: SystemData*)
          local opt_circle = storages.circle:get_entry(circle_id)
          local opt_entity_info = storages.entity_info:get_entry(entity_info_id)
 
-         --print('  ids: , ' .. tostring(position_id)  ..', ' .. tostring(circle_id)  ..', ' .. tostring(entity_info_id) )
-         --print('  filleds: ', opt_position.filled, opt_circle.filled, opt_entity_info.filled )
 
          if opt_position.filled and opt_circle.filled and opt_entity_info.filled then
             local position = opt_position:get()
@@ -201,11 +203,9 @@ local function circle_painter_system(sysdata: SystemData*)
             local y: cint = position.y // 1
 
             ## if not NODRAW then
-               --print'    draw'
-               Raylib.DrawCircle(x, y, 5, circle.color)
+               Raylib.DrawPixel(x, y, circle.color)
             ## end
          else
-            --print('  i:> ' .. tostring(i))
             sysdata:mark_available(i)
          end
       end
@@ -223,7 +223,7 @@ local function entity_destroyer_system(sysdata: SystemData*)
             local entity_info = opt_entity_info:get()
 
             if entity_info.dead then
-               log'entity remove!'
+               log'entity removed!'
                CircleEntity.remove(entity_info)
                e_count = e_count - 1
             end
@@ -244,9 +244,7 @@ Raylib.SetTargetFPS(60)
 
 local function frame()
    local fps = Raylib.GetFPS()
-   local pause = fps < 50
 
-   --print('--->')
    for i = 1, 100 do
       if e_count < E_MAX then
          CircleEntity.new(e_count)
@@ -254,30 +252,19 @@ local function frame()
       end
    end
 
-   if not pause then
-      velocity_system(systems.velocity)
-   end
+   velocity_system(systems.velocity)
 
    Raylib.BeginDrawing()
       Raylib.ClearBackground(BLACK)
 
-      if not pause then
-         circle_painter_system(systems.circle_painter)
-      end
+      circle_painter_system(systems.circle_painter)
 
       ## if not NOFPS then
-      Raylib.DrawText(
-         "Entities count: " .. tostring(e_count) .. "/" .. tostring(E_MAX) ..
-         '\nFPS: ' .. tostring(fps),
-         10, 10, 24, pause and RED or SKYBLUE
-      )
+      Raylib.DrawText(tostring(fps), 200, 10, 24, SKYBLUE)
       ## end
    Raylib.EndDrawing()
 
-   if not pause then
-      entity_destroyer_system(systems.entity_destroyer_system)
-   end
-   --print('<---')
+   entity_destroyer_system(systems.entity_destroyer_system)
 end
 
 while not Raylib.WindowShouldClose() do
