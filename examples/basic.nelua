@@ -1,6 +1,6 @@
 -- ## cflags '-fsanitize=address'
 
-local ENTITY_COUNT: uinteger <comptime> = 50000_u
+local ENTITY_COUNT: uinteger <comptime> = #[ E_COUNT or 50000 ]#
 
 require 'math'
 require 'os'
@@ -13,76 +13,55 @@ local Vec2 = @record {
 
 local Position: type = @Vec2
 local Velocity: type = @Vec2
-local Name: type = @string
+local Name: type = @stringview
 
 local Rightmost = @record {
    pos_component: Position,
    name_component: Name
 }
 
-local PositionStorage: type = @Storage(Position);
-local VelocityStorage: type = @Storage(Velocity);
-local EntityStorage: type = @Storage(Entity);
-local NameStorage: type = @Storage(Name);
-
 local Storages = @record {
-   position: PositionStorage,
-   velocity: VelocityStorage,
-   entity: EntityStorage,
-   name: NameStorage
+   position: Storage(Position),
+   velocity: Storage(Velocity),
+   entity: Storage(Entity),
+   name: Storage(Name)
 }
 
 -- storages, its where components and entities will live
 local storages = (@Storages) {
-   position = PositionStorage.new(),
-   velocity = VelocityStorage.new(),
-   entity = EntityStorage.new(),
-   name = NameStorage.new()
+   position = (@Storage(Position)).new(),
+   velocity = (@Storage(Velocity)).new(),
+   entity = (@Storage(Entity)).new(),
+   name = (@Storage(Name)).new()
 }
 
-local Masks = @record{
+-- masks
+local masks: record{
    position: BitsetArray,
    velocity: BitsetArray,
    name: BitsetArray
-}
-
-
--- masks
-local masks: Masks = (@Masks){
+} = {
    position = bitset_array.new(1, BITSETARRAY_OF_ONE),                         -- 1
    velocity = bitset_array.lshift(bitset_array.new(1, BITSETARRAY_OF_ONE), 1), -- 2
    name     = bitset_array.lshift(bitset_array.new(1, BITSETARRAY_OF_ONE), 2)  -- 4
 }
 
-local movement_read: vector(BitsetArray);
-local movement_write: vector(BitsetArray);
-
-movement_read:push(bitset_array.copy(masks.velocity))
-movement_write:push(bitset_array.copy(masks.position))
-
-local rightmost_read: vector(BitsetArray)
-rightmost_read:push(bitset_array.copy(masks.name))
-rightmost_read:push(bitset_array.copy(masks.position))
-
-local rightmost_write: vector(BitsetArray)
-
 -- systems data
-local SystemsData = @record{
+local movement_read: vector(BitsetArray) = { bitset_array.copy(masks.velocity) }
+local movement_write: vector(BitsetArray) = { bitset_array.copy(masks.position) }
+
+local rightmost_read: vector(BitsetArray) = { bitset_array.copy(masks.name), bitset_array.copy(masks.position) }
+local rightmost_write: vector(BitsetArray) = {}
+
+local systems_data: record{
    movement: SystemData,
    rightmost: SystemData
-}
-
-local systems_data = (@SystemsData){
+} = {
    movement  = SystemData.new(movement_read, movement_write),
    rightmost = SystemData.new(rightmost_read, rightmost_write)
 }
 
--- systems are just functions, here we have 2 examples
--- movement_system is more "functional", using arguments instead of locals declared above.
--- rightmost_system will use the locals
--- anyway, do what you think is better, is just a function ;)
-
-local function movement_system(mov_system_data: SystemData*, velocity_storage: VelocityStorage*, position_storage: PositionStorage*)
+local function movement_system(mov_system_data: SystemData*, velocity_storage: Storage(Velocity)*, position_storage: Storage(Position)*)
    for i = 0, < #mov_system_data.components_indexes do
       local ids = mov_system_data.components_indexes[i]
 
@@ -90,12 +69,12 @@ local function movement_system(mov_system_data: SystemData*, velocity_storage: V
          local vel_id: GenerationalIndex = ids[0]
          local pos_id: GenerationalIndex = ids[1]
 
-         local possible_vel = velocity_storage:get_entry(vel_id)
-         local possible_pos = position_storage:get_entry(pos_id)
+         local opt_vel = velocity_storage:get_entry(vel_id)
+         local opt_pos = position_storage:get_entry(pos_id)
 
-         if possible_pos.filled and possible_vel.filled then
-            local pos = possible_pos:get()
-            local vel = possible_vel:get()
+         if opt_pos.filled and opt_vel.filled then
+            local pos = opt_pos:get()
+            local vel = opt_vel:get()
 
             pos.x = pos.x + vel.x
             pos.y = pos.y + vel.y
@@ -114,14 +93,14 @@ local function rightmost_system(rightmost: Rightmost*)
 
       if #ids > 0 then
          local name_id = ids[0]
-         local possible_name = storages.name:get_entry(name_id)
+         local opt_name = storages.name:get_entry(name_id)
 
          local pos_id = ids[1]
-         local possible_pos  = storages.position:get_entry(pos_id)
+         local opt_pos  = storages.position:get_entry(pos_id)
 
-         if possible_name.filled and possible_pos.filled then
-            local name = possible_name:get()
-            local pos = possible_pos:get()
+         if opt_name.filled and opt_pos.filled then
+            local name = opt_name:get()
+            local pos = opt_pos:get()
 
             if pos.x > rightmost_position then
                rightmost_position  = pos.x
@@ -139,14 +118,10 @@ end
 local e_ids: vector(GenerationalIndex);
 local names_ids: vector(GenerationalIndex);
 
--- also, we need to store the ids of created and removed entities ids
-local untracked_entities_ids: vector(GenerationalIndex);
-
 
 -- let's create 1 entity!
 print 'creating!'
 for i = 0, < ENTITY_COUNT do
-
    -- create an entity in the entities storage and get this new entity
    local new_entity_id, new_entity = storages.entity:new_entry(Entity.new())
    e_ids:push(new_entity_id)
@@ -156,12 +131,12 @@ for i = 0, < ENTITY_COUNT do
    -- create_position(x, y) returns just a new very simple table, remember?
    math.randomseed(os.time())
    local new_position_id, new_position = storages.position:new_entry((@Position){
-      x = (@integer)(math.random() * 200 - 100.0), y = (@integer)(i)
+      x = (math.random() * 200 - 100.0), y = i
    })
 
    math.randomseed(os.time())
    local new_velocity_id, new_velocity = storages.velocity:new_entry((@Velocity){
-      x = (@integer)(math.random() * 400 - 200.0), y = 0
+      x = (math.random() * 400 - 200.0), y = 0
    })
 
    -- storages accepts any value
@@ -174,15 +149,10 @@ for i = 0, < ENTITY_COUNT do
    new_entity:associate(new_velocity_id, masks.velocity)
    new_entity:associate(new_name_id, masks.name)
 
-   -- storing the new entity ids
-   untracked_entities_ids:push(new_entity_id)
+   -- update the systems to use the new entity
+   systems_data.movement:update(new_entity)
+   systems_data.rightmost:update(new_entity)
 end
-
--- now, we update the systems datas, so they will know what entities
--- should be processed
-print 'update systems!'
-systems_data.movement:update(&storages.entity, untracked_entities_ids)
-systems_data.rightmost:update(&storages.entity, untracked_entities_ids)
 
  --let's execute movement system 10x
 for _ = 1, 10 do
