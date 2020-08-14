@@ -3,10 +3,16 @@ require 'raylib'
 require 'rotor'
 require 'math'
 
-## if NPROF then
+## if PROF then
 require 'nprof'
-local nprof: NProf = {}
+## else
+local NProf = @record{}
+function NProf:push(s: stringview) end
+function NProf:pop() end
+function NProf:draw() end
+function NProf:reset() end
 ## end
+local nprof: NProf = {}
 
 ## ENTITY_MAX = ENTITY_MAX or 5000
 
@@ -137,6 +143,8 @@ function CircleEntity.remove(e_info: EntityInfo)
 end
 
 local function velocity_system(sysdata: SystemData*)
+   nprof:push'velocity system' -- [
+
    for i = 0, < #sysdata.components_indexes do
       local ids = sysdata.components_indexes[i]
       if #ids > 0 then
@@ -175,9 +183,13 @@ local function velocity_system(sysdata: SystemData*)
          end
       end
    end
+
+   nprof:pop() -- ]
 end
 
 local function circle_painter_system(sysdata: SystemData*)
+   nprof:push'circle painter system' -- [
+
    for i = 0, < #sysdata.components_indexes do
       local ids = sysdata.components_indexes[i]
       if #ids > 0 then
@@ -210,9 +222,13 @@ local function circle_painter_system(sysdata: SystemData*)
          end
       end
    end
+
+   nprof:pop() -- ]
 end
 
 local function entity_destroyer_system(sysdata: SystemData*)
+   nprof:push'entity destroyer system' -- [
+
    for i = 0, < #sysdata.components_indexes do
       local ids = sysdata.components_indexes[i]
       if #ids > 0 then
@@ -232,25 +248,31 @@ local function entity_destroyer_system(sysdata: SystemData*)
          end
       end
    end
-end
 
-## if NPROF then
-nprof:push'app' -- [
-## end
+   nprof:pop() -- ]
+end
 
 Raylib.InitWindow(800, 600, "Rotor-nelua ECS test")
 
 Raylib.SetTargetFPS(60)
 
 local function frame()
+   nprof:push'frame' -- [
+
    local fps = Raylib.GetFPS()
 
+   entity_destroyer_system(systems.entity_destroyer_system)
+
+   nprof:push'entity creation' -- [
    for i = 1, 100 do
       if e_count < E_MAX then
          CircleEntity.new(e_count)
          e_count = e_count + 1
       end
    end
+   nprof:pop() -- ]
+
+   nprof:push'systems' -- [
 
    velocity_system(systems.velocity)
 
@@ -258,27 +280,24 @@ local function frame()
       Raylib.ClearBackground(BLACK)
 
       circle_painter_system(systems.circle_painter)
+      nprof:pop() -- ]
 
       ## if not NOFPS then
-      Raylib.DrawText(tostring(fps), 200, 10, 24, SKYBLUE)
+         local fps_str = tostring(fps)
+         defer fps_str:destroy() end
+         Raylib.DrawText(fps_str, (Raylib.GetScreenWidth() - 60) // 1, 10, 24, SKYBLUE)
       ## end
+
+      nprof:pop() -- ]
+      nprof:draw()
    Raylib.EndDrawing()
 
-   entity_destroyer_system(systems.entity_destroyer_system)
+   nprof:reset()
 end
 
 while not Raylib.WindowShouldClose() do
-   ## if NPROF then
-   nprof:push'frame' -- [
-   ## end
    frame()
-   ## if NPROF then
-   nprof:pop() -- ]
-   ## end
 end
 
 Raylib.CloseWindow()
 
-## if NPROF then
-nprof:pop() -- ]
-## end
