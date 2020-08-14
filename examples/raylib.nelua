@@ -1,8 +1,9 @@
--- note: requires Raylib, see:
+-- note: requires Raylib, see: https://github.com/Andre-LA/raylib-nelua-mirror
 require 'raylib'
 require 'rotor'
 require 'math'
 
+-- note: to use nprof you don't need to do this, just require 'nprof'
 ## if PROF then
 require 'nprof'
 ## else
@@ -12,6 +13,7 @@ function NProf:pop() end
 function NProf:draw() end
 function NProf:reset() end
 ## end
+
 local nprof: NProf = {}
 
 ## ENTITY_MAX = ENTITY_MAX or 5000
@@ -111,7 +113,7 @@ function CircleEntity.new(entity_i: uinteger)
    local velocity_id, velocity = storages.velocity:new_entry({ math.random(25, 50), math.random(25, 50) })
    entity:associate(velocity_id, masks.velocity)
 
-   local circle_id, circle = storages.circle:new_entry({ color = RAYWHITE })
+   local circle_id, circle = storages.circle:new_entry({ color = GREEN })
    entity:associate(circle_id, masks.circle)
 
    local entity_info_id, entity_info = storages.entity_info:new_entry({
