@@ -3,7 +3,7 @@ require 'rotor.bitset_array'
 require 'rotor.entity'
 require 'rotor.storage'
 
-local function union(a: vector(BitsetArray)*, b: vector(BitsetArray)*): vector(BitsetArray)
+local function union(a: *vector(BitsetArray), b: *vector(BitsetArray)): vector(BitsetArray)
    local result: vector(BitsetArray);
    result:reserve(#a + #b)
 
@@ -21,7 +21,7 @@ global SystemData = @record{
    available_indexes: vector(isize)
 }
 
-function SystemData.new(read_components: vector(BitsetArray)*, write_components: vector(BitsetArray)*): SystemData
+function SystemData.new(read_components: *vector(BitsetArray), write_components: *vector(BitsetArray)): SystemData
    local mask_read = bitset_array.new(1, BITSETARRAY_OF_ZEROS);
    local mask_write = bitset_array.new(1, BITSETARRAY_OF_ZEROS);
 
@@ -40,7 +40,7 @@ function SystemData.new(read_components: vector(BitsetArray)*, write_components:
    return new_system_data
 end
 
-local function collect_components(system_data: SystemData*, entity_i: Entity*, out_result: vector(GenerationalIndex)*)
+local function collect_components(system_data: *SystemData, entity_i: *Entity, out_result: *vector(GenerationalIndex))
    out_result:clear()
    out_result:reserve(#system_data.required_storages)
 
@@ -55,7 +55,7 @@ local function collect_components(system_data: SystemData*, entity_i: Entity*, o
    end
 end
 
-function SystemData:update(entity: Entity*)
+function SystemData:update(entity: *Entity)
    local masks_intersection = bitset_array.band(self.mask, entity.mask)
 
    if bitset_array.equals(masks_intersection, self.mask) then
@@ -74,6 +74,6 @@ end
 
 function SystemData:mark_available(idx: isize)
    self.available_indexes:push(idx)
-   local idx_components_indexes: vector(GenerationalIndex)* = self.components_indexes[idx]
+   local idx_components_indexes: *vector(GenerationalIndex) = self.components_indexes[idx]
    idx_components_indexes:clear()
 end
