@@ -254,6 +254,7 @@ local function entity_destroyer_system(sysdata: SystemData*)
    nprof:pop() -- ]
 end
 
+Raylib.SetConfigFlags(ConfigFlag.FLAG_WINDOW_RESIZABLE)
 Raylib.InitWindow(800, 600, "Rotor-nelua ECS test")
 
 Raylib.SetTargetFPS(60)
