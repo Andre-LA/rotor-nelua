@@ -13,10 +13,10 @@ global Entity = @record{
 }
 
 function Entity.new(): Entity
-   local new_entity: Entity;
-
-   new_entity.mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS)
-   new_entity.untracked = true
+   local new_entity: Entity = {
+      mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS),
+      untracked = true
+   }
 
    return new_entity
 end
