@@ -72,6 +72,29 @@ require 'vector'
     return result
   end
 
+  -- TODO: make iterable using pairs and mpairs
+  function StorageT:iterate_entries() : (
+    function(state: *StorageT, ctrl_var: isize): (boolean, isize, GenerationalIndex, *T),
+    *StorageT,
+    isize
+  )
+    local function iterator(state: *StorageT, ctrl_var: isize): (boolean, isize, GenerationalIndex, *T)
+      ctrl_var = ctrl_var + 1
+
+      if ctrl_var < #state.entries then
+        local gen_opt = state.generations[ctrl_var]
+        if gen_opt.filled then
+          local gen_id: GenerationalIndex = {index = ctrl_var, generation = gen_opt:get()}
+          return true, ctrl_var, gen_id, state.entries[ctrl_var]
+        end
+      end
+
+      return false, -1, (@GenerationalIndex){0,0}, nilptr
+    end
+
+    return iterator, self, -1
+  end
+
   function StorageT:remove_entry(gen_idx: GenerationalIndex): boolean
     if not is_valid_entry(self, gen_idx) then
       return false
@@ -92,12 +115,12 @@ require 'vector'
 
 global Storage = #[make_storage]#
 
-## if TEST then --[
+## if TEST then -- [[
   require 'string'
 
-  local ok_color: string = string.char(27) .. '[' .. tostring(32) .. 'm'
-  local err_color: string = string.char(27) .. '[' .. tostring(31) .. 'm'
-  local reset_color: string = string.char(27) .. '[' .. tostring(0) .. 'm'
+  local ok_color <comptime> = #[string.char(27) .. '[' .. tostring(32) .. 'm']#
+  local err_color <comptime> = #[string.char(27) .. '[' .. tostring(31) .. 'm']#
+  local reset_color <comptime> = #[string.char(27) .. '[' .. tostring(0) .. 'm']#
 
   local function _assert(cnd: boolean, msg: string)
     local final_msg: stringview = err_color .. msg
@@ -220,4 +243,11 @@ global Storage = #[make_storage]#
   _assert(storage_test.generations[1]:get() == 1, 'test error: .generations[1]:get() should be 1')
 
   print(ok_color .. 'storage test: ok' .. reset_color)
-## end --]
+
+  print('printing all entries using for-in')
+
+  print('index', 'id', 'entry.x', 'entry.y')
+  for i, id, entry in storage_test:iterate_entries() do
+    print(i, tostring(id), entry.x, entry.y)
+  end
+## end -- ]]

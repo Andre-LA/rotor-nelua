@@ -115,7 +115,6 @@ local function rightmost_system(rightmost: *Rightmost)
 end
 
 -- here, we will store the ids
-local e_ids: vector(GenerationalIndex);
 local names_ids: vector(GenerationalIndex);
 
 -- let's create 1 entity!
@@ -123,7 +122,6 @@ print 'creating!'
 for i = 0, < ENTITY_COUNT do
   -- create an entity in the entities storage and get this new entity
   local new_entity_id, new_entity = storages.entity:new_entry(Entity.new())
-  e_ids:push(new_entity_id)
 
   -- create the components in their respective storages.
   -- storage.new_entry(value) returns a generational_index, it's used as an ID
@@ -169,18 +167,12 @@ local rightmost: Rightmost
 print ('executing rightmost system')
 rightmost_system(rightmost)
 
-for i = 0, < #storages.entity.entries do
-  local e_id = e_ids[i]
+for i, _, entity in storages.entity:iterate_entries() do
   local name_id = names_ids[i]
 
-  local possible_e = storages.entity:get_entry(e_id)
-
-  if possible_e.filled then
-    local e = possible_e:get()
-    e:disassociate_by_storage(masks.position)
-    e:disassociate_by_storage(masks.velocity)
-    e:disassociate_by_component(name_id)
-  end
+  entity:disassociate_by_storage(masks.position)
+  entity:disassociate_by_storage(masks.velocity)
+  entity:disassociate_by_component(name_id)
 end
 
 local name, pos_x = rightmost.name_component, rightmost.pos_component.x
