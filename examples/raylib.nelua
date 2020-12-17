@@ -133,7 +133,7 @@ end
 function CircleEntity.remove(e_info: EntityInfo)
   local opt_entity = storages.entity:get_entry(e_info.entity_id)
   check(opt_entity.filled, 'entity to remove not found')
-  local entity: Entity* = opt_entity:get()
+  local entity: *Entity = opt_entity:get()
   entity:clear()
 
   storages.entity:remove_entry(e_info.entity_id)
@@ -144,7 +144,7 @@ function CircleEntity.remove(e_info: EntityInfo)
   storages.entity_info:remove_entry(e_info.entity_info_id)
 end
 
-local function velocity_system(sysdata: SystemData*)
+local function velocity_system(sysdata: *SystemData)
   nprof:push'velocity system' -- [
 
   for i = 0, < #sysdata.components_indexes do
@@ -189,7 +189,7 @@ local function velocity_system(sysdata: SystemData*)
   nprof:pop() -- ]
 end
 
-local function circle_painter_system(sysdata: SystemData*)
+local function circle_painter_system(sysdata: *SystemData)
   nprof:push'circle painter system' -- [
 
   for i = 0, < #sysdata.components_indexes do
@@ -228,7 +228,7 @@ local function circle_painter_system(sysdata: SystemData*)
   nprof:pop() -- ]
 end
 
-local function entity_destroyer_system(sysdata: SystemData*)
+local function entity_destroyer_system(sysdata: *SystemData)
   nprof:push'entity destroyer system' -- [
 
   for i = 0, < #sysdata.components_indexes do

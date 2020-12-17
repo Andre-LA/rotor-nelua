@@ -130,12 +130,12 @@ for i = 0, < ENTITY_COUNT do
   -- create_position(x, y) returns just a new very simple table, remember?
   math.randomseed(os.time())
   local new_position_id, new_position = storages.position:new_entry((@Position){
-    x = (math.random() * 200 - 100.0), y = i
+    x = math.random(-100, 100), y = i
   })
 
   math.randomseed(os.time())
   local new_velocity_id, new_velocity = storages.velocity:new_entry((@Velocity){
-    x = (math.random() * 400 - 200.0), y = 0
+    x = math.random(-200, 200), y = 0
   })
 
   -- storages accepts any value
