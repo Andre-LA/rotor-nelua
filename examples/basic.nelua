@@ -29,10 +29,10 @@ local Storages = @record {
 
 -- storages, its where components and entities will live
 local storages = (@Storages) {
-  position = (@Storage(Position)).new(),
-  velocity = (@Storage(Velocity)).new(),
-  entity = (@Storage(Entity)).new(),
-  name = (@Storage(Name)).new()
+  position = (@Storage(Position)).new(ENTITY_COUNT),
+  velocity = (@Storage(Velocity)).new(ENTITY_COUNT),
+  entity = (@Storage(Entity)).new(ENTITY_COUNT),
+  name = (@Storage(Name)).new(ENTITY_COUNT)
 }
 
 -- masks

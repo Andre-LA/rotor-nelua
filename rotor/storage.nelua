@@ -20,10 +20,20 @@ require 'vector'
     return gen.filled and gidx.generation == gen:get()
   end
 
-  function StorageT.new(): StorageT
+  function StorageT.new(pre_reserve: facultative(usize)): StorageT
     local newstorage: StorageT = {}
     newstorage.next_free_ids:push({ 0, 1 })
+
+    ## if not pre_reserve.type.is_niltype then
+      newstorage:reserve(pre_reserve)
+    ## end
+
     return newstorage
+  end
+
+  function StorageT:reserve(n: usize)
+    self.entries:reserve(n)
+    self.generations:reserve(n)
   end
 
   function StorageT:new_entry(entry_content: T): (GenerationalIndex, *T)

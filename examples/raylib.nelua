@@ -1,4 +1,4 @@
--- note: requires Raylib, see: https://github.com/Andre-LA/raylib-nelua-mirror
+-- note: requires Raylib, see: https://github.com/Andre-LA/raylib-nelua
 require 'raylib'
 require 'rotor'
 require 'math'
@@ -16,10 +16,8 @@ function NProf:reset() end
 
 local nprof: NProf = {}
 
-## ENTITY_MAX = ENTITY_MAX or 5000
-
 local e_count = 0_u
-local E_MAX <comptime>= #[ ENTITY_MAX ]#
+local E_MAX <comptime>= #[ ENTITY_MAX or 5000 ]#
 
 local function log(msg: stringview)
   ## if not NOLOG then
@@ -63,11 +61,11 @@ local storages: record{
   circle: Storage(Circle),
   entity_info: Storage(EntityInfo),
 } = {
-  entity = (@Storage(Entity)).new(),
-  position = (@Storage(Position)).new(),
-  velocity = (@Storage(Velocity)).new(),
-  circle = (@Storage(Circle)).new(),
-  entity_info = (@Storage(EntityInfo)).new(),
+  entity = (@Storage(Entity)).new(E_MAX),
+  position = (@Storage(Position)).new(E_MAX),
+  velocity = (@Storage(Velocity)).new(E_MAX),
+  circle = (@Storage(Circle)).new(E_MAX),
+  entity_info = (@Storage(EntityInfo)).new(E_MAX),
 }
 
 local masks: record{
