@@ -6,78 +6,78 @@ require 'rotor.generational_index'
 require 'rotor.optional'
 
 global Entity = @record{
-   associated_components: vector(GenerationalIndex),
-   associated_storages: vector(BitsetArray),
-   mask: BitsetArray,
-   untracked: boolean
+  associated_components: vector(GenerationalIndex),
+  associated_storages: vector(BitsetArray),
+  mask: BitsetArray,
+  untracked: boolean
 }
 
 function Entity.new(): Entity
-   local new_entity: Entity = {
-      mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS),
-      untracked = true
-   }
+  local new_entity: Entity = {
+    mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS),
+    untracked = true
+  }
 
-   return new_entity
+  return new_entity
 end
 
 function Entity:get_component_index(component_gen_idx: GenerationalIndex): optional(uinteger)
-   local result: optional(uinteger);
+  local result: optional(uinteger);
 
-   for i = 0_u, < (@uinteger)(#self.associated_components) do
-      if self.associated_components[i] == component_gen_idx then
-         result:set(i)
-      end
-   end
+  for i = 0_u, < (@uinteger)(#self.associated_components) do
+    if self.associated_components[i] == component_gen_idx then
+      result:set(i)
+    end
+  end
 
-   return result
+  return result
 end
 
 function Entity:clear()
-   self.associated_components:destroy()
-   self.associated_storages:destroy()
-   self.mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS)
-   self.untracked = true
+  self.associated_components:destroy()
+  self.associated_storages:destroy()
+  self.mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS)
+  self.untracked = true
 end
 
 function Entity:get_storage_index(storage_mask: BitsetArray): optional(uinteger)
-   local result: optional(uinteger);
+  local result: optional(uinteger);
 
-   for i = 0_u, < (@uinteger)(#self.associated_storages) do
-      if bitset_array.equals(self.associated_storages[i], storage_mask) then
-         result:set(i)
-      end
-   end
+  for i = 0_u, < (@uinteger)(#self.associated_storages) do
+    if bitset_array.equals(self.associated_storages[i], storage_mask) then
+      result:set(i)
+    end
+  end
 
-   return result
+  return result
 end
 
 function Entity:associate(component_gen_idx: GenerationalIndex, storage_mask: BitsetArray)
-   self.mask = bitset_array.bor(self.mask, storage_mask)
-   self.associated_components:push(component_gen_idx)
-   self.associated_storages:push(storage_mask)
+  self.mask = bitset_array.bor(self.mask, storage_mask)
+  self.associated_components:push(component_gen_idx)
+  self.associated_storages:push(storage_mask)
 end
 
 function Entity:disassociate(possible_index: optional(uinteger)): boolean
-   if possible_index.filled then
-      local index = possible_index:get()
+  if possible_index.filled then
+    local index = possible_index:get()
 
-      self.mask = bitset_array.band(self.mask, bitset_array.bnot(self.associated_storages[index]))
-      self.associated_components:remove(index)
-      self.associated_storages:remove(index)
+    self.mask = bitset_array.band(self.mask, bitset_array.bnot(self.associated_storages[index]))
+    self.associated_components:remove(index)
+    self.associated_storages:remove(index)
 
-      return true
-   else
-      return false
-   end
+    return true
+  else
+    return false
+  end
 end
 
 function Entity:disassociate_by_component(component_gen_idx: GenerationalIndex): boolean
-   local possible_index = self:get_component_index(component_gen_idx)
-   return self:disassociate(possible_index)
+  local possible_index = self:get_component_index(component_gen_idx)
+  return self:disassociate(possible_index)
 end
 
 function Entity:disassociate_by_storage(storage_mask: BitsetArray): boolean
-   local possible_index = self:get_storage_index(storage_mask)
-   return self:disassociate(possible_index)
+  local possible_index = self:get_storage_index(storage_mask)
+  return self:disassociate(possible_index)
 end

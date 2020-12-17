@@ -22,64 +22,64 @@ local e_count = 0_u
 local E_MAX <comptime>= #[ ENTITY_MAX ]#
 
 local function log(msg: stringview)
-   ## if not NOLOG then
-      print(msg)
-   ## end
+  ## if not NOLOG then
+    print(msg)
+  ## end
 end
 
 local function log_id(msg: stringview, id: GenerationalIndex)
-   ## if not NOLOG then
-      print(msg, tostring(id))
-   ## end
+  ## if not NOLOG then
+    print(msg, tostring(id))
+  ## end
 end
 
 local Position = @record{
-   x: number,
-   y: number,
+  x: number,
+  y: number,
 }
 
 local Velocity = @record{
-   x: number,
-   y: number,
+  x: number,
+  y: number,
 }
 
 local Circle = @record{
-   color: Color
+  color: Color
 }
 
 local EntityInfo = @record{
-   dead: boolean,
-   entity_id: GenerationalIndex,
-   position_id: GenerationalIndex,
-   velocity_id: GenerationalIndex,
-   circle_id: GenerationalIndex,
-   entity_info_id: GenerationalIndex,
+  dead: boolean,
+  entity_id: GenerationalIndex,
+  position_id: GenerationalIndex,
+  velocity_id: GenerationalIndex,
+  circle_id: GenerationalIndex,
+  entity_info_id: GenerationalIndex,
 }
 
 local storages: record{
-   entity: Storage(Entity),
-   position: Storage(Position),
-   velocity: Storage(Velocity),
-   circle: Storage(Circle),
-   entity_info: Storage(EntityInfo),
+  entity: Storage(Entity),
+  position: Storage(Position),
+  velocity: Storage(Velocity),
+  circle: Storage(Circle),
+  entity_info: Storage(EntityInfo),
 } = {
-   entity = (@Storage(Entity)).new(),
-   position = (@Storage(Position)).new(),
-   velocity = (@Storage(Velocity)).new(),
-   circle = (@Storage(Circle)).new(),
-   entity_info = (@Storage(EntityInfo)).new(),
+  entity = (@Storage(Entity)).new(),
+  position = (@Storage(Position)).new(),
+  velocity = (@Storage(Velocity)).new(),
+  circle = (@Storage(Circle)).new(),
+  entity_info = (@Storage(EntityInfo)).new(),
 }
 
 local masks: record{
-   position: BitsetArray,
-   velocity: BitsetArray,
-   circle: BitsetArray,
-   entity_info: BitsetArray,
+  position: BitsetArray,
+  velocity: BitsetArray,
+  circle: BitsetArray,
+  entity_info: BitsetArray,
 } = {
-   position = bitset_array.lshift(BITSETARRAY_OF_ONE, 0),
-   velocity = bitset_array.lshift(BITSETARRAY_OF_ONE, 1),
-   circle = bitset_array.lshift(BITSETARRAY_OF_ONE, 2),
-   entity_info = bitset_array.lshift(BITSETARRAY_OF_ONE, 3),
+  position = bitset_array.lshift(BITSETARRAY_OF_ONE, 0),
+  velocity = bitset_array.lshift(BITSETARRAY_OF_ONE, 1),
+  circle = bitset_array.lshift(BITSETARRAY_OF_ONE, 2),
+  entity_info = bitset_array.lshift(BITSETARRAY_OF_ONE, 3),
 }
 
 local ba_vel_read: vector(BitsetArray)  = { bitset_array.copy(masks.velocity), bitset_array.copy(masks.entity_info) }
@@ -92,166 +92,166 @@ local ba_einfo_read: vector(BitsetArray) = { bitset_array.copy(masks.entity_info
 local ba_einfo_write: vector(BitsetArray) = {  }
 
 local systems: record {
-   velocity: SystemData,
-   circle_painter: SystemData,
-   entity_destroyer_system: SystemData,
+  velocity: SystemData,
+  circle_painter: SystemData,
+  entity_destroyer_system: SystemData,
 } = {
-   velocity = SystemData.new(ba_vel_read, ba_vel_write),
-   circle_painter = SystemData.new(ba_cir_read, ba_cir_write),
-   entity_destroyer_system = SystemData.new(ba_einfo_read, ba_einfo_write),
+  velocity = SystemData.new(ba_vel_read, ba_vel_write),
+  circle_painter = SystemData.new(ba_cir_read, ba_cir_write),
+  entity_destroyer_system = SystemData.new(ba_einfo_read, ba_einfo_write),
 }
 
 local CircleEntity = @record{}
 
 function CircleEntity.new(entity_i: uinteger)
-   local entity_id, entity = storages.entity:new_entry(Entity.new())
-   log_id('new entity: ', entity_id)
+  local entity_id, entity = storages.entity:new_entry(Entity.new())
+  log_id('new entity: ', entity_id)
 
-   local position_id, position = storages.position:new_entry({ 0,0 })
-   entity:associate(position_id, masks.position)
+  local position_id, position = storages.position:new_entry({ 0,0 })
+  entity:associate(position_id, masks.position)
 
-   local velocity_id, velocity = storages.velocity:new_entry({ math.random(25, 50), math.random(25, 50) })
-   entity:associate(velocity_id, masks.velocity)
+  local velocity_id, velocity = storages.velocity:new_entry({ math.random(25, 50), math.random(25, 50) })
+  entity:associate(velocity_id, masks.velocity)
 
-   local circle_id, circle = storages.circle:new_entry({ color = GREEN })
-   entity:associate(circle_id, masks.circle)
+  local circle_id, circle = storages.circle:new_entry({ color = GREEN })
+  entity:associate(circle_id, masks.circle)
 
-   local entity_info_id, entity_info = storages.entity_info:new_entry({
-      entity_id = entity_id,
-      position_id = position_id,
-      velocity_id = velocity_id,
-      circle_id = circle_id
-   })
-   entity_info.entity_info_id = entity_info_id
-   entity:associate(entity_info_id, masks.entity_info)
+  local entity_info_id, entity_info = storages.entity_info:new_entry({
+    entity_id = entity_id,
+    position_id = position_id,
+    velocity_id = velocity_id,
+    circle_id = circle_id
+  })
+  entity_info.entity_info_id = entity_info_id
+  entity:associate(entity_info_id, masks.entity_info)
 
-   systems.velocity:update(entity)
-   systems.circle_painter:update(entity)
-   systems.entity_destroyer_system:update(entity)
+  systems.velocity:update(entity)
+  systems.circle_painter:update(entity)
+  systems.entity_destroyer_system:update(entity)
 end
 
 function CircleEntity.remove(e_info: EntityInfo)
-   local opt_entity = storages.entity:get_entry(e_info.entity_id)
-   check(opt_entity.filled, 'entity to remove not found')
-   local entity: Entity* = opt_entity:get()
-   entity:clear()
+  local opt_entity = storages.entity:get_entry(e_info.entity_id)
+  check(opt_entity.filled, 'entity to remove not found')
+  local entity: Entity* = opt_entity:get()
+  entity:clear()
 
-   storages.entity:remove_entry(e_info.entity_id)
+  storages.entity:remove_entry(e_info.entity_id)
 
-   storages.position:remove_entry(e_info.position_id)
-   storages.velocity:remove_entry(e_info.velocity_id)
-   storages.circle:remove_entry(e_info.circle_id)
-   storages.entity_info:remove_entry(e_info.entity_info_id)
+  storages.position:remove_entry(e_info.position_id)
+  storages.velocity:remove_entry(e_info.velocity_id)
+  storages.circle:remove_entry(e_info.circle_id)
+  storages.entity_info:remove_entry(e_info.entity_info_id)
 end
 
 local function velocity_system(sysdata: SystemData*)
-   nprof:push'velocity system' -- [
+  nprof:push'velocity system' -- [
 
-   for i = 0, < #sysdata.components_indexes do
-      local ids = sysdata.components_indexes[i]
-      if #ids > 0 then
-         local velocity_id = ids[0]
-         local position_id = ids[1]
-         local entity_info_id = ids[2]
+  for i = 0, < #sysdata.components_indexes do
+    local ids = sysdata.components_indexes[i]
+    if #ids > 0 then
+      local velocity_id = ids[0]
+      local position_id = ids[1]
+      local entity_info_id = ids[2]
 
-         local opt_velocity = storages.velocity:get_entry(velocity_id)
-         local opt_position = storages.position:get_entry(position_id)
-         local opt_entity_info = storages.entity_info:get_entry(entity_info_id)
+      local opt_velocity = storages.velocity:get_entry(velocity_id)
+      local opt_position = storages.position:get_entry(position_id)
+      local opt_entity_info = storages.entity_info:get_entry(entity_info_id)
 
-         if opt_velocity.filled and opt_position.filled and opt_entity_info.filled then
-            local velocity = opt_velocity:get()
-            local position = opt_position:get()
-            local entity_info = opt_entity_info:get()
+      if opt_velocity.filled and opt_position.filled and opt_entity_info.filled then
+        local velocity = opt_velocity:get()
+        local position = opt_position:get()
+        local entity_info = opt_entity_info:get()
 
-            if entity_info.dead then
-               continue
-            end
+        if entity_info.dead then
+          continue
+        end
 
-            local dt = Raylib.GetFrameTime()
+        local dt = Raylib.GetFrameTime()
 
-            position.x = position.x + velocity.x * dt
-            position.y = position.y + velocity.y * dt
+        position.x = position.x + velocity.x * dt
+        position.y = position.y + velocity.y * dt
 
-            if position.x > 800 or position.y > 600 then
-               if math.random(0.0, 1.0) < 0.4 then
-                  entity_info.dead = true
-                  log_id('DEAD TRUE: ', entity_info.entity_id)
-               else
-                  position.x, position.y = 0, 0
-               end
-            end
-         else
-            sysdata:mark_available(i)
-         end
+        if position.x > 800 or position.y > 600 then
+          if math.random(0.0, 1.0) < 0.4 then
+            entity_info.dead = true
+            log_id('DEAD TRUE: ', entity_info.entity_id)
+          else
+            position.x, position.y = 0, 0
+          end
+        end
+      else
+        sysdata:mark_available(i)
       end
-   end
+    end
+  end
 
-   nprof:pop() -- ]
+  nprof:pop() -- ]
 end
 
 local function circle_painter_system(sysdata: SystemData*)
-   nprof:push'circle painter system' -- [
+  nprof:push'circle painter system' -- [
 
-   for i = 0, < #sysdata.components_indexes do
-      local ids = sysdata.components_indexes[i]
-      if #ids > 0 then
-         local position_id = ids[0]
-         local circle_id = ids[1]
-         local entity_info_id = ids[2]
+  for i = 0, < #sysdata.components_indexes do
+    local ids = sysdata.components_indexes[i]
+    if #ids > 0 then
+      local position_id = ids[0]
+      local circle_id = ids[1]
+      local entity_info_id = ids[2]
 
-         local opt_position = storages.position:get_entry(position_id)
-         local opt_circle = storages.circle:get_entry(circle_id)
-         local opt_entity_info = storages.entity_info:get_entry(entity_info_id)
+      local opt_position = storages.position:get_entry(position_id)
+      local opt_circle = storages.circle:get_entry(circle_id)
+      local opt_entity_info = storages.entity_info:get_entry(entity_info_id)
 
 
-         if opt_position.filled and opt_circle.filled and opt_entity_info.filled then
-            local position = opt_position:get()
-            local circle = opt_circle:get()
-            local entity_info = opt_entity_info:get()
+      if opt_position.filled and opt_circle.filled and opt_entity_info.filled then
+        local position = opt_position:get()
+        local circle = opt_circle:get()
+        local entity_info = opt_entity_info:get()
 
-            if entity_info.dead then
-               continue
-            end
+        if entity_info.dead then
+          continue
+        end
 
-            local x: cint = position.x // 1
-            local y: cint = position.y // 1
+        local x: cint = position.x // 1
+        local y: cint = position.y // 1
 
-            ## if not NODRAW then
-               Raylib.DrawPixel(x, y, circle.color)
-            ## end
-         else
-            sysdata:mark_available(i)
-         end
+        ## if not NODRAW then
+          Raylib.DrawPixel(x, y, circle.color)
+        ## end
+      else
+        sysdata:mark_available(i)
       end
-   end
+    end
+  end
 
-   nprof:pop() -- ]
+  nprof:pop() -- ]
 end
 
 local function entity_destroyer_system(sysdata: SystemData*)
-   nprof:push'entity destroyer system' -- [
+  nprof:push'entity destroyer system' -- [
 
-   for i = 0, < #sysdata.components_indexes do
-      local ids = sysdata.components_indexes[i]
-      if #ids > 0 then
-         local entity_info_id = ids[0]
-         local opt_entity_info = storages.entity_info:get_entry(entity_info_id)
+  for i = 0, < #sysdata.components_indexes do
+    local ids = sysdata.components_indexes[i]
+    if #ids > 0 then
+      local entity_info_id = ids[0]
+      local opt_entity_info = storages.entity_info:get_entry(entity_info_id)
 
-         if opt_entity_info.filled then
-            local entity_info = opt_entity_info:get()
+      if opt_entity_info.filled then
+        local entity_info = opt_entity_info:get()
 
-            if entity_info.dead then
-               log'entity removed!'
-               CircleEntity.remove(entity_info)
-               e_count = e_count - 1
-            end
-         else
-            sysdata:mark_available(i)
-         end
+        if entity_info.dead then
+          log'entity removed!'
+          CircleEntity.remove(entity_info)
+          e_count = e_count - 1
+        end
+      else
+        sysdata:mark_available(i)
       end
-   end
+    end
+  end
 
-   nprof:pop() -- ]
+  nprof:pop() -- ]
 end
 
 Raylib.SetConfigFlags(ConfigFlag.FLAG_WINDOW_RESIZABLE)
@@ -260,46 +260,46 @@ Raylib.InitWindow(800, 600, "Rotor-nelua ECS test")
 Raylib.SetTargetFPS(60)
 
 local function frame()
-   nprof:push'frame' -- [
+  nprof:push'frame' -- [
 
-   local fps = Raylib.GetFPS()
+  local fps = Raylib.GetFPS()
 
-   entity_destroyer_system(systems.entity_destroyer_system)
+  entity_destroyer_system(systems.entity_destroyer_system)
 
-   nprof:push'entity creation' -- [
-   for i = 1, 100 do
-      if e_count < E_MAX then
-         CircleEntity.new(e_count)
-         e_count = e_count + 1
-      end
-   end
-   nprof:pop() -- ]
+  nprof:push'entity creation' -- [
+  for i = 1, 100 do
+    if e_count < E_MAX then
+      CircleEntity.new(e_count)
+      e_count = e_count + 1
+    end
+  end
+  nprof:pop() -- ]
 
-   nprof:push'systems' -- [
+  nprof:push'systems' -- [
 
-   velocity_system(systems.velocity)
+  velocity_system(systems.velocity)
 
-   Raylib.BeginDrawing()
-      Raylib.ClearBackground(BLACK)
+  Raylib.BeginDrawing()
+    Raylib.ClearBackground(BLACK)
 
-      circle_painter_system(systems.circle_painter)
-      nprof:pop() -- ]
+    circle_painter_system(systems.circle_painter)
+    nprof:pop() -- ]
 
-      ## if not NOFPS then
-         local fps_str = tostring(fps)
-         defer fps_str:destroy() end
-         Raylib.DrawText(fps_str, (Raylib.GetScreenWidth() - 60) // 1, 10, 24, SKYBLUE)
-      ## end
+    ## if not NOFPS then
+      local fps_str = tostring(fps)
+      defer fps_str:destroy() end
+      Raylib.DrawText(fps_str, (Raylib.GetScreenWidth() - 60) // 1, 10, 24, SKYBLUE)
+    ## end
 
-      nprof:pop() -- ]
-      nprof:draw()
-   Raylib.EndDrawing()
+    nprof:pop() -- ]
+    nprof:draw()
+  Raylib.EndDrawing()
 
-   nprof:reset()
+  nprof:reset()
 end
 
 while not Raylib.WindowShouldClose() do
-   frame()
+  frame()
 end
 
 Raylib.CloseWindow()
