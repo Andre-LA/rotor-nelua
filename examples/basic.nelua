@@ -47,40 +47,34 @@ local masks: record{
 }
 
 -- systems data
-local movement_read: vector(BitsetArray) = { bitset_array.copy(masks.velocity) }
-local movement_write: vector(BitsetArray) = { bitset_array.copy(masks.position) }
-
-local rightmost_read: vector(BitsetArray) = { bitset_array.copy(masks.name), bitset_array.copy(masks.position) }
-local rightmost_write: vector(BitsetArray) = {}
 
 local systems_data: record{
   movement: SystemData,
   rightmost: SystemData
 } = {
-  movement  = SystemData.new(movement_read, movement_write),
-  rightmost = SystemData.new(rightmost_read, rightmost_write)
+  movement = SystemData.new{
+    masks.velocity,
+    masks.position
+  },
+  rightmost = SystemData.new{
+    masks.name,
+    masks.position
+  }
 }
 
 local function movement_system(mov_system_data: *SystemData, velocity_storage: *Storage(Velocity), position_storage: *Storage(Position))
-  for i = 0, < #mov_system_data.components_indexes do
-    local ids = mov_system_data.components_indexes[i]
+  for i, ids in mov_system_data:iterate_ids() do
+    local opt_vel = velocity_storage:get_entry(ids[0])
+    local opt_pos = position_storage:get_entry(ids[1])
 
-    if #ids > 0 then
-      local vel_id: GenerationalIndex = ids[0]
-      local pos_id: GenerationalIndex = ids[1]
+    if opt_pos.filled and opt_vel.filled then
+      local pos = opt_pos:get()
+      local vel = opt_vel:get()
 
-      local opt_vel = velocity_storage:get_entry(vel_id)
-      local opt_pos = position_storage:get_entry(pos_id)
-
-      if opt_pos.filled and opt_vel.filled then
-        local pos = opt_pos:get()
-        local vel = opt_vel:get()
-
-        pos.x = pos.x + vel.x
-        pos.y = pos.y + vel.y
-      else
-        mov_system_data:mark_available(i)
-      end
+      pos.x = pos.x + vel.x
+      pos.y = pos.y + vel.y
+    else
+      mov_system_data:mark_available(i)
     end
   end
 end
@@ -88,28 +82,21 @@ end
 local function rightmost_system(rightmost: *Rightmost)
   local rightmost_position = math.mininteger
 
-  for i = 0, < #systems_data.rightmost.components_indexes do
-    local ids = systems_data.rightmost.components_indexes[i]
+  for i, ids in systems_data.rightmost:iterate_ids() do
+    local opt_name = storages.name:get_entry(ids[0])
+    local opt_pos  = storages.position:get_entry(ids[1])
 
-    if #ids > 0 then
-      local name_id = ids[0]
-      local opt_name = storages.name:get_entry(name_id)
+    if opt_name.filled and opt_pos.filled then
+      local name = opt_name:get()
+      local pos = opt_pos:get()
 
-      local pos_id = ids[1]
-      local opt_pos  = storages.position:get_entry(pos_id)
-
-      if opt_name.filled and opt_pos.filled then
-        local name = opt_name:get()
-        local pos = opt_pos:get()
-
-        if pos.x > rightmost_position then
-          rightmost_position  = pos.x
-          rightmost.pos_component = $pos
-          rightmost.name_component = $name
-        end
-      else
-        systems_data.rightmost:mark_available(i)
+      if pos.x > rightmost_position then
+        rightmost_position  = pos.x
+        rightmost.pos_component = $pos
+        rightmost.name_component = $name
       end
+    else
+      systems_data.rightmost:mark_available(i)
     end
   end
 end
