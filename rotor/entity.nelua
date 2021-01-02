@@ -14,7 +14,7 @@ global Entity = @record{
 
 function Entity.new(): Entity
   local new_entity: Entity = {
-    mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS),
+    mask = BitsetArray.zero(),
     untracked = true
   }
 
@@ -36,7 +36,7 @@ end
 function Entity:clear()
   self.associated_components:destroy()
   self.associated_storages:destroy()
-  self.mask = bitset_array.new(0, BITSETARRAY_OF_ZEROS)
+  self.mask = BitsetArray.zero()
   self.untracked = true
 end
 
@@ -44,7 +44,7 @@ function Entity:get_storage_index(storage_mask: BitsetArray): optional(uinteger)
   local result: optional(uinteger);
 
   for i = 0_u, < (@uinteger)(#self.associated_storages) do
-    if bitset_array.equals(self.associated_storages[i], storage_mask) then
+    if self.associated_storages[i] == storage_mask then
       result:set(i)
     end
   end
@@ -53,16 +53,17 @@ function Entity:get_storage_index(storage_mask: BitsetArray): optional(uinteger)
 end
 
 function Entity:associate(component_gen_idx: GenerationalIndex, storage_mask: BitsetArray)
-  self.mask = bitset_array.bor(self.mask, storage_mask)
+  self.mask = self.mask | storage_mask
   self.associated_components:push(component_gen_idx)
   self.associated_storages:push(storage_mask)
 end
 
+-- TODO: review this, it really should be an optional?
 function Entity:disassociate(possible_index: optional(uinteger)): boolean
   if possible_index.filled then
     local index = possible_index:get()
 
-    self.mask = bitset_array.band(self.mask, bitset_array.bnot(self.associated_storages[index]))
+    self.mask = self.mask & ~self.associated_storages[index]
     self.associated_components:remove(index)
     self.associated_storages:remove(index)
 

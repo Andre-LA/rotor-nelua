@@ -12,14 +12,14 @@ global SystemData = @record{
 
 function SystemData.new(components: vector(BitsetArray)): SystemData
   local new_system_data: SystemData = {
-    mask = bitset_array.new(1, BITSETARRAY_OF_ZEROS),
+    mask = BitsetArray.zero(),
     required_storages = components,
     components_indexes = {},
     available_indexes = {}
   }
 
   for i = 0, < #components do
-    new_system_data.mask = bitset_array.bor(new_system_data.mask, components[i])
+    new_system_data.mask = new_system_data.mask | components[i]
   end
 
   return new_system_data
@@ -32,7 +32,7 @@ local function collect_components(system_data: *SystemData, entity_i: *Entity, o
   -- for each required storage, insert the components indexes respectively
   for i = 0, < #system_data.required_storages do
     for j = 0, < #entity_i.associated_storages do
-      if bitset_array.equals(system_data.required_storages[i], entity_i.associated_storages[j]) then
+      if system_data.required_storages[i] == entity_i.associated_storages[j] then
         out_result:push(entity_i.associated_components[j])
         break
       end
@@ -41,9 +41,9 @@ local function collect_components(system_data: *SystemData, entity_i: *Entity, o
 end
 
 function SystemData:update(entity: *Entity)
-  local masks_intersection = bitset_array.band(self.mask, entity.mask)
+  local masks_intersection = self.mask & entity.mask
 
-  if bitset_array.equals(masks_intersection, self.mask) then
+  if masks_intersection == self.mask then
     local idx_to_insert: usize = 0
 
     if #self.available_indexes > 0 then

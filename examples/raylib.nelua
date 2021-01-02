@@ -74,10 +74,10 @@ local masks: record{
   circle: BitsetArray,
   entity_info: BitsetArray,
 } = {
-  position = bitset_array.lshift(BITSETARRAY_OF_ONE, 0),
-  velocity = bitset_array.lshift(BITSETARRAY_OF_ONE, 1),
-  circle = bitset_array.lshift(BITSETARRAY_OF_ONE, 2),
-  entity_info = bitset_array.lshift(BITSETARRAY_OF_ONE, 3),
+  position    = BitsetArray.one(),
+  velocity    = BitsetArray.lshifted_one(1),
+  circle      = BitsetArray.lshifted_one(2),
+  entity_info = BitsetArray.lshifted_one(3),
 }
 
 local systems: record {
@@ -86,17 +86,17 @@ local systems: record {
   entity_destroyer_system: SystemData,
 } = {
   velocity = SystemData.new{
-    bitset_array.copy(masks.velocity),
-    bitset_array.copy(masks.entity_info),
-    bitset_array.copy(masks.position)
+    masks.velocity,
+    masks.entity_info,
+    masks.position
   },
   circle_painter = SystemData.new{
-    bitset_array.copy(masks.position),
-    bitset_array.copy(masks.circle),
-    bitset_array.copy(masks.entity_info)
+    masks.position,
+    masks.circle,
+    masks.entity_info
   },
   entity_destroyer_system = SystemData.new{
-    bitset_array.copy(masks.entity_info)
+    masks.entity_info
   },
 }
 

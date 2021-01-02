@@ -41,9 +41,9 @@ local masks: record{
   velocity: BitsetArray,
   name: BitsetArray
 } = {
-  position = bitset_array.new(1, BITSETARRAY_OF_ONE),                         -- 1
-  velocity = bitset_array.lshift(bitset_array.new(1, BITSETARRAY_OF_ONE), 1), -- 2
-  name    = bitset_array.lshift(bitset_array.new(1, BITSETARRAY_OF_ONE), 2)   -- 4
+  position = BitsetArray.one(),           -- 1
+  velocity = BitsetArray.lshifted_one(1), -- 2
+  name     = BitsetArray.lshifted_one(2)  -- 4
 }
 
 -- systems data
