@@ -86,18 +86,18 @@ end
 
 function BitsetArray:__shl(steps: usize): BitsetArray
   local LEFTMOSTBIT <comptime> = BitsetArray.LEFTMOSTBIT
-  local result: BitsetArray = {}
+  local result: BitsetArray = BitsetArray.copy(self)
 
-  for _ = 0, < steps do
+  for _ = 1, steps do
     for i = BITSETARRAY_SIZE - 1, 0, -1 do
       local next_bs_contains_leftmostbit = (do
         if i > 0 then
-          return self.data[i-1] & LEFTMOSTBIT == LEFTMOSTBIT
+          return result.data[i-1] & LEFTMOSTBIT == LEFTMOSTBIT
         end
         return false
       end)
 
-      result.data[i] = self.data[i] << 1
+      result.data[i] = result.data[i] << 1
 
       if next_bs_contains_leftmostbit then
         result.data[i] = result.data[i] | 1
@@ -110,21 +110,21 @@ end
 
 function BitsetArray:__shr(steps: uinteger): BitsetArray
   local LEFTMOSTBIT <comptime> = BitsetArray.LEFTMOSTBIT
-  local result: BitsetArray = {}
+  local result = BitsetArray.copy(self)
 
-  for _ = 0, < steps do
+  for _ = 1, steps do
     for i = 0, < BITSETARRAY_SIZE do
       local next_bs_contains_leftmostbit = (do
         if i < BITSETARRAY_SIZE - 1 then
-          return self.data[i+1] & 1 == 1
+          return result.data[i+1] & 1 == 1
         end
         return false
       end)
 
-      result.data[i] = self.data[i] >> 1
+      result.data[i] = result.data[i] >> 1
 
       if next_bs_contains_leftmostbit then
-        result.data[i] = result.data[i] | 1
+        result.data[i] = result.data[i] | LEFTMOSTBIT
       end
     end
   end
@@ -237,9 +237,33 @@ end
 
   d = d >> 1
   assert(d[0] ==  2)
-  assert(d[1] == ~0_u >> 1_u)
+  assert(d[1] == ~0_u)
   assert(d[2] ==  0)
   assert(d[3] ==  0)
+
+  local e = BitsetArray.one()
+  assert(e[0] == 1)
+  assert(e[1] == 0)
+  assert(e[2] == 0)
+  assert(e[3] == 0)
+
+  e[2] = ~0_u
+  assert(e[0] ==  1_u)
+  assert(e[1] ==  0_u)
+  assert(e[2] == ~0_u)
+  assert(e[3] ==  0_u)
+
+  e = e << 3
+  assert(e[0] ==  8_u)
+  assert(e[1] ==  0_u)
+  assert(e[2] == ~0_u << 3_u)
+  assert(e[3] ==  7_u)
+
+  e = e >> 3
+  assert(e[0] ==  1_u)
+  assert(e[1] ==  0_u)
+  assert(e[2] == ~0_u)
+  assert(e[3] ==  0_u)
 
   -- test final state
   assert(a[0] == 0)
@@ -268,9 +292,14 @@ end
   assert(a_band_na[3] ==    (0_u) &    (~0_u))
 
   assert(d[0] ==  2)
-  assert(d[1] == ~0_u >> 1_u)
+  assert(d[1] == ~0_u)
   assert(d[2] ==  0)
   assert(d[3] ==  0)
+
+  assert(e[0] ==  1_u)
+  assert(e[1] ==  0_u)
+  assert(e[2] == ~0_u)
+  assert(e[3] ==  0_u)
 
   print'bitset array tests OK'
 ## end
