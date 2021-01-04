@@ -20,7 +20,7 @@ function Entity.new(components_count: facultative(usize)): Entity
     untracked = true
   }
 
-  ## if components_count.type.is_niltype then
+  ## if not components_count.type.is_niltype then
     new_entity.associated_components:reserve(components_count)
     new_entity.associated_storages:reserve(components_count)
   ## end
