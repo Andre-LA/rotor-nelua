@@ -31,6 +31,19 @@ require 'vector'
     return newstorage
   end
 
+  function StorageT:destroy(entry_destroy_callback: facultative(function(entry: *T)))
+    self.next_free_ids:destroy()
+
+    ## if not entry_destroy_callback.type.is_niltype then
+      for i = 0, < #self.entries do
+        entry_destroy_callback(self.entries[i])
+      end
+    ## end
+
+    self.entries:destroy()
+    self.generations:destroy()
+  end
+
   function StorageT:reserve(n: usize)
     self.entries:reserve(n)
     self.generations:reserve(n)

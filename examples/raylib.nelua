@@ -3,21 +3,8 @@ require 'raylib'
 require 'rotor'
 require 'math'
 
--- note: to use nprof you don't need to do this, just require 'nprof'
-## if PROF then
-require 'nprof'
-## else
-local NProf = @record{}
-function NProf:push(s: stringview) end
-function NProf:pop() end
-function NProf:draw() end
-function NProf:reset() end
-## end
-
-local nprof: NProf = {}
-
 local e_count = 0_u
-local E_MAX <comptime>= #[ ENTITY_MAX or 5000 ]#
+local E_MAX <comptime>= #[ E_COUNT or 5000 ]#
 
 local function log(msg: stringview)
   ## if not NOLOG then
@@ -27,7 +14,7 @@ end
 
 local function log_id(msg: stringview, id: GenerationalIndex)
   ## if not NOLOG then
-    print(msg, tostring(id))
+    print(msg, id.index, id.generation)
   ## end
 end
 
@@ -54,19 +41,36 @@ local EntityInfo = @record{
   entity_info_id: GenerationalIndex,
 }
 
-local storages: record{
+local Storages = @record{
   entity: Storage(Entity),
   position: Storage(Position),
   velocity: Storage(Velocity),
   circle: Storage(Circle),
   entity_info: Storage(EntityInfo),
-} = {
+}
+
+function Storages:destroy()
+  self.position:destroy()
+  self.velocity:destroy()
+  self.circle:destroy()
+  self.entity_info:destroy()
+
+  self.entity:destroy(function (entity: *Entity)
+    entity:destroy()
+  end)
+end
+
+local storages: Storages = {
   entity = (@Storage(Entity)).new(E_MAX),
   position = (@Storage(Position)).new(E_MAX),
   velocity = (@Storage(Velocity)).new(E_MAX),
   circle = (@Storage(Circle)).new(E_MAX),
   entity_info = (@Storage(EntityInfo)).new(E_MAX),
 }
+
+defer
+  storages:destroy()
+end
 
 local masks: record{
   position: BitsetArray,
@@ -80,11 +84,19 @@ local masks: record{
   entity_info = BitsetArray.lshifted_one(3),
 }
 
-local systems: record {
+local Systems = @record{
   velocity: SystemData,
   circle_painter: SystemData,
   entity_destroyer_system: SystemData,
-} = {
+}
+
+function Systems:destroy()
+  self.velocity:destroy()
+  self.circle_painter:destroy()
+  self.entity_destroyer_system:destroy()
+end
+
+local systems: Systems = {
   velocity = SystemData.new{
     masks.velocity,
     masks.entity_info,
@@ -99,6 +111,10 @@ local systems: record {
     masks.entity_info
   },
 }
+
+defer
+  systems:destroy()
+end
 
 local CircleEntity = @record{}
 
@@ -144,8 +160,6 @@ function CircleEntity.remove(e_info: EntityInfo)
 end
 
 local function velocity_system(sysdata: *SystemData)
-  nprof:push'velocity system' -- [[
-
   for i, ids in sysdata:iterate_ids() do
     local opt_velocity = storages.velocity:get_entry(ids[0])
     local opt_position = storages.position:get_entry(ids[1])
@@ -177,13 +191,9 @@ local function velocity_system(sysdata: *SystemData)
       sysdata:mark_available(i)
     end
   end
-
-  nprof:pop() -- ]]
 end
 
 local function circle_painter_system(sysdata: *SystemData)
-  nprof:push'circle painter system' -- [[
-
   for i, ids in sysdata:iterate_ids() do
     local opt_position = storages.position:get_entry(ids[0])
     local opt_circle = storages.circle:get_entry(ids[1])
@@ -208,13 +218,9 @@ local function circle_painter_system(sysdata: *SystemData)
       sysdata:mark_available(i)
     end
   end
-
-  nprof:pop() -- ]]
 end
 
 local function entity_destroyer_system(sysdata: *SystemData)
-  nprof:push'entity destroyer system' -- [[
-
   for i, ids in sysdata:iterate_ids() do
     local opt_entity_info = storages.entity_info:get_entry(ids[0])
 
@@ -230,52 +236,46 @@ local function entity_destroyer_system(sysdata: *SystemData)
       sysdata:mark_available(i)
     end
   end
-
-  nprof:pop() -- ]]
 end
 
 Raylib.SetConfigFlags(ConfigFlag.FLAG_WINDOW_RESIZABLE)
-Raylib.InitWindow(800, 600, "Rotor-nelua ECS test")
+local SCREEN_WIDTH <comptime> = 800
+Raylib.InitWindow(SCREEN_WIDTH, 600, "Rotor-nelua ECS test")
 
 Raylib.SetTargetFPS(60)
 
 local function frame()
-  nprof:push'frame' -- [[
-
   local fps = Raylib.GetFPS()
 
   entity_destroyer_system(systems.entity_destroyer_system)
 
-  nprof:push'entity creation' -- [[
   for i = 1, 100 do
     if e_count < E_MAX then
       CircleEntity.new(e_count)
       e_count = e_count + 1
     end
   end
-  nprof:pop() -- ]]
-
-  nprof:push'systems' -- [[
 
   velocity_system(systems.velocity)
 
   Raylib.BeginDrawing()
     Raylib.ClearBackground(BLACK)
 
-    circle_painter_system(systems.circle_painter)
-    nprof:pop() -- ]]
-
-    ## if not NOFPS then
-      local fps_str = tostring(fps)
-      defer fps_str:destroy() end
-      Raylib.DrawText(fps_str, (Raylib.GetScreenWidth() - 60) // 1, 10, 24, SKYBLUE)
+    ## if not NODRAW then
+      circle_painter_system(systems.circle_painter)
     ## end
 
-    nprof:pop() -- ]]
-    nprof:draw()
-  Raylib.EndDrawing()
+    ## if not NOFPS then
+      Raylib.DrawFPS((SCREEN_WIDTH - 100) // 1, 10)
+    ## end
 
-  nprof:reset()
+    ## if not NODRAWCOUNT then
+      local count = tostring(e_count)
+      defer count:destroy() end
+      Raylib.DrawText(count, (SCREEN_WIDTH - 200), 40, 20, WHITE)
+    ## end
+
+  Raylib.EndDrawing()
 end
 
 while not Raylib.WindowShouldClose() do

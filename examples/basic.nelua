@@ -27,6 +27,16 @@ local Storages = @record {
   name: Storage(Name)
 }
 
+function Storages:destroy()
+  self.position:destroy()
+  self.velocity:destroy()
+  self.name:destroy()
+
+  self.entity:destroy(function (entity: *Entity)
+    entity:destroy()
+  end)
+end
+
 -- storages, its where components and entities will live
 local storages = (@Storages) {
   position = (@Storage(Position)).new(ENTITY_COUNT),
@@ -34,6 +44,10 @@ local storages = (@Storages) {
   entity = (@Storage(Entity)).new(ENTITY_COUNT),
   name = (@Storage(Name)).new(ENTITY_COUNT)
 }
+
+defer
+  storages:destroy()
+end
 
 -- masks
 local masks: record{
@@ -48,10 +62,17 @@ local masks: record{
 
 -- systems data
 
-local systems_data: record{
+local Systems = @record{
   movement: SystemData,
   rightmost: SystemData
-} = {
+}
+
+function Systems:destroy()
+  self.movement:destroy()
+  self.rightmost:destroy()
+end
+
+local systems_data: Systems = {
   movement = SystemData.new{
     masks.velocity,
     masks.position
@@ -61,6 +82,10 @@ local systems_data: record{
     masks.position
   }
 }
+
+defer
+  systems_data:destroy()
+end
 
 local function movement_system(mov_system_data: *SystemData, velocity_storage: *Storage(Velocity), position_storage: *Storage(Position))
   for i, ids in mov_system_data:iterate_ids() do
@@ -103,6 +128,10 @@ end
 
 -- here, we will store the ids
 local names_ids: vector(GenerationalIndex);
+names_ids:reserve(ENTITY_COUNT)
+defer
+  names_ids:destroy()
+end
 
 -- let's create 1 entity!
 print 'creating!'
@@ -144,7 +173,7 @@ for _ = 1, 10 do
   movement_system(systems_data.movement, storages.velocity, storages.position)
 end
 
-local rightmost: Rightmost
+local rightmost: Rightmost;
 
 -- let's execute rightmost_system, note that 'rigtmost' variable
 -- is not an storage, component, or something specific;

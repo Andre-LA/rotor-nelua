@@ -12,13 +12,32 @@ global Entity = @record{
   untracked: boolean
 }
 
-function Entity.new(): Entity
+-- TODO: add "components count" facultative, so we can already allocate enough space
+--  this will avoid reallocations from `associated_*` vectors
+function Entity.new(components_count: facultative(usize)): Entity
   local new_entity: Entity = {
     mask = BitsetArray.zero(),
     untracked = true
   }
 
+  ## if components_count.type.is_niltype then
+    new_entity.associated_components:reserve(components_count)
+    new_entity.associated_storages:reserve(components_count)
+  ## end
+
   return new_entity
+end
+
+function Entity:destroy()
+  self.associated_components:destroy()
+  self.associated_storages:destroy()
+end
+
+function Entity:clear()
+  self.associated_components:clear()
+  self.associated_storages:clear()
+  self.mask = BitsetArray.zero()
+  self.untracked = true
 end
 
 function Entity:get_component_index(component_gen_idx: GenerationalIndex): optional(uinteger)
@@ -33,12 +52,6 @@ function Entity:get_component_index(component_gen_idx: GenerationalIndex): optio
   return result
 end
 
-function Entity:clear()
-  self.associated_components:destroy()
-  self.associated_storages:destroy()
-  self.mask = BitsetArray.zero()
-  self.untracked = true
-end
 
 function Entity:get_storage_index(storage_mask: BitsetArray): optional(uinteger)
   local result: optional(uinteger);

@@ -25,6 +25,17 @@ function SystemData.new(components: vector(BitsetArray)): SystemData
   return new_system_data
 end
 
+function SystemData:destroy()
+  self.required_storages:destroy()
+
+  for i = 0, < #self.components_indexes do
+    self.components_indexes[i]:destroy()
+  end
+  self.components_indexes:destroy()
+
+  self.available_indexes:destroy()
+end
+
 local function collect_components(system_data: *SystemData, entity_i: *Entity, out_result: *vector(GenerationalIndex))
   out_result:clear()
   out_result:reserve(#system_data.required_storages)
