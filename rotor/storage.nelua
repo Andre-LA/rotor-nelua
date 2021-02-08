@@ -71,7 +71,7 @@ require 'vector'
     end
 
     -- return a copy of the gen_idx of this new entry and a pointer of the entry content
-    local entry: *T = self.entries[next_free_id.index]
+    local entry: *T = &self.entries[next_free_id.index]
     return next_free_id, entry
   end
 
@@ -98,7 +98,7 @@ require 'vector'
         local gen_opt = state.generations[ctrl_var]
         if gen_opt.filled then
           local gen_id: GenerationalIndex = {index = ctrl_var, generation = gen_opt:get()}
-          return true, ctrl_var, gen_id, state.entries[ctrl_var]
+          return true, ctrl_var, gen_id, &state.entries[ctrl_var]
         end
       end
 
@@ -115,7 +115,7 @@ require 'vector'
 
     self.entries[gen_idx.index] = (@T)()
 
-    local gen: *optional(uinteger) = self.generations[gen_idx.index]
+    local gen: *optional(uinteger) = &self.generations[gen_idx.index]
     gen:clear()
 
     self.next_free_ids:push({ gen_idx.index, gen_idx.generation + 1 })

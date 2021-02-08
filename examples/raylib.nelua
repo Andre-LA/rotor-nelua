@@ -5,6 +5,7 @@ require 'math'
 
 local e_count = 0_u
 local E_MAX <comptime>= #[ E_COUNT or 5000 ]#
+local E_DELTA <comptime> = #[ E_DELTA or 100 ]#
 
 local function log(msg: stringview)
   ## if not NOLOG then
@@ -249,7 +250,7 @@ local function frame()
 
   entity_destroyer_system(systems.entity_destroyer_system)
 
-  for i = 1, 100 do
+  for i = 1, E_DELTA do
     if e_count < E_MAX then
       CircleEntity.new(e_count)
       e_count = e_count + 1

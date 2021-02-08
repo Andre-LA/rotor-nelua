@@ -70,7 +70,7 @@ end
 
 function SystemData:mark_available(idx: isize)
   self.available_indexes:push(idx)
-  local idx_components_indexes: *vector(GenerationalIndex) = self.components_indexes[idx]
+  local idx_components_indexes: *vector(GenerationalIndex) = &self.components_indexes[idx]
   idx_components_indexes:clear()
 end
 
@@ -97,5 +97,5 @@ function SystemData:iterate_ids() :(
     return false, -1, (@vector(GenerationalIndex)){}
   end
 
-  return iterator, self.components_indexes, -1
+  return iterator, &self.components_indexes, -1
 end
