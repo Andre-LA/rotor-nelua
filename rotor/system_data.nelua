@@ -85,7 +85,6 @@ function SystemData:iterate_ids() :(
 
       if index < #ids_vec then
         local ids = ids_vec[index]
-
         if #ids > 0 then
           return true, index, ids
         end

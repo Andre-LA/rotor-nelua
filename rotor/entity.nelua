@@ -52,7 +52,6 @@ function Entity:get_component_index(component_gen_idx: GenerationalIndex): optio
   return result
 end
 
-
 function Entity:get_storage_index(storage_mask: BitsetArray): optional(uinteger)
   local result: optional(uinteger);
 

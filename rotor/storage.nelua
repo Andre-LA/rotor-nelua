@@ -31,12 +31,12 @@ require 'vector'
     return newstorage
   end
 
-  function StorageT:destroy(entry_destroy_callback: facultative(function(entry: *T)))
+  function StorageT:destroy(on_destroy_callback: facultative(function(entry: *T)))
     self.next_free_ids:destroy()
 
-    ## if not entry_destroy_callback.type.is_niltype then
+    ## if not on_destroy_callback.type.is_niltype then
       for i = 0, < #self.entries do
-        entry_destroy_callback(self.entries[i])
+        on_destroy_callback(self.entries[i])
       end
     ## end
 
@@ -86,7 +86,7 @@ require 'vector'
   end
 
   -- TODO: make iterable using pairs and mpairs
-  function StorageT:iterate_entries() : (
+  function StorageT:iterate_entries(): (
     function(state: *StorageT, ctrl_var: isize): (boolean, isize, GenerationalIndex, *T),
     *StorageT,
     isize
@@ -108,15 +108,17 @@ require 'vector'
     return iterator, self, -1
   end
 
-  function StorageT:remove_entry(gen_idx: GenerationalIndex): boolean
+  function StorageT:remove_entry(gen_idx: GenerationalIndex, on_remove_callback: facultative(function(entry: *T))): boolean
     if not is_valid_entry(self, gen_idx) then
       return false
     end
 
-    self.entries[gen_idx.index] = (@T)()
+    ## if not on_remove_callback.type.is_niltype then
+      on_remove_callback(self.entries[gen_idx.index])
+    ## end
 
-    local gen: *optional(uinteger) = &self.generations[gen_idx.index]
-    gen:clear()
+    self.entries[gen_idx.index] = (@T)()
+    self.generations[gen_idx.index]:clear()
 
     self.next_free_ids:push({ gen_idx.index, gen_idx.generation + 1 })
 
