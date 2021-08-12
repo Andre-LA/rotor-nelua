@@ -33,7 +33,7 @@ function BitsetArray:copy(): BitsetArray
   return result
 end
 
-function BitsetArray:__eq(bitset_array: BitsetArray): boolean
+function BitsetArray.__eq(self: BitsetArray, bitset_array: BitsetArray): boolean
   for i = 0, < BITSETARRAY_SIZE do
     if self.data[i] ~= bitset_array.data[i] then
       return false
@@ -43,7 +43,7 @@ function BitsetArray:__eq(bitset_array: BitsetArray): boolean
   return true
 end
 
-function BitsetArray:__band(bitset_array: BitsetArray): BitsetArray
+function BitsetArray.__band(self: BitsetArray, bitset_array: BitsetArray): BitsetArray
   local result: BitsetArray = {}
 
   for i = 0, < BITSETARRAY_SIZE do
@@ -54,7 +54,7 @@ function BitsetArray:__band(bitset_array: BitsetArray): BitsetArray
 end
 
 
-function BitsetArray:__bor(bitset_array: BitsetArray): BitsetArray
+function BitsetArray.__bor(self: BitsetArray, bitset_array: BitsetArray): BitsetArray
   local result: BitsetArray = {}
 
   for i = 0, < BITSETARRAY_SIZE do
@@ -64,7 +64,7 @@ function BitsetArray:__bor(bitset_array: BitsetArray): BitsetArray
   return result
 end
 
-function BitsetArray:__bxor(bitset_array: BitsetArray): BitsetArray
+function BitsetArray.__bxor(self: BitsetArray, bitset_array: BitsetArray): BitsetArray
   local result: BitsetArray = {}
 
   for i = 0, < BITSETARRAY_SIZE do
@@ -74,7 +74,7 @@ function BitsetArray:__bxor(bitset_array: BitsetArray): BitsetArray
   return result
 end
 
-function BitsetArray:__bnot(): BitsetArray
+function BitsetArray.__bnot(self: BitsetArray): BitsetArray
   local result: BitsetArray = {}
 
   for i = 0, < BITSETARRAY_SIZE do
@@ -84,7 +84,7 @@ function BitsetArray:__bnot(): BitsetArray
   return result
 end
 
-function BitsetArray:__shl(steps: usize): BitsetArray
+function BitsetArray.__shl(self: BitsetArray, steps: usize): BitsetArray
   local LEFTMOSTBIT <comptime> = BitsetArray.LEFTMOSTBIT
   local result: BitsetArray = BitsetArray.copy(self)
 
@@ -108,7 +108,7 @@ function BitsetArray:__shl(steps: usize): BitsetArray
   return result
 end
 
-function BitsetArray:__shr(steps: uinteger): BitsetArray
+function BitsetArray.__shr(self: BitsetArray, steps: uinteger): BitsetArray
   local LEFTMOSTBIT <comptime> = BitsetArray.LEFTMOSTBIT
   local result = BitsetArray.copy(self)
 
@@ -129,12 +129,6 @@ function BitsetArray:__shr(steps: uinteger): BitsetArray
     end
   end
 
-  return result
-end
-
-function BitsetArray.lshifted_one(shift: usize): BitsetArray <inline>
-  local result: BitsetArray = { data = {1} }
-  result = result << shift
   return result
 end
 

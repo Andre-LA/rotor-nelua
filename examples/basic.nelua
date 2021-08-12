@@ -1,5 +1,3 @@
--- ## cflags '-fsanitize=address'
-
 local ENTITY_COUNT: uinteger <comptime> = #[ E_COUNT or 50000 ]#
 
 require 'math'
@@ -13,11 +11,17 @@ local Vec2 = @record {
 
 local Position: type = @Vec2
 local Velocity: type = @Vec2
-local Name: type = @stringview
+local Name: type = @string
 
 local Rightmost = @record {
   pos_component: Position,
   name_component: Name
+}
+
+local Masks = @record{
+  position: BitsetArray,
+  velocity: BitsetArray,
+  name: BitsetArray
 }
 
 local Storages = @record {
@@ -37,31 +41,7 @@ function Storages:destroy()
   end)
 end
 
--- storages, its where components and entities will live
-local storages = (@Storages) {
-  position = (@Storage(Position)).new(ENTITY_COUNT),
-  velocity = (@Storage(Velocity)).new(ENTITY_COUNT),
-  entity = (@Storage(Entity)).new(ENTITY_COUNT),
-  name = (@Storage(Name)).new(ENTITY_COUNT)
-}
-
-defer
-  storages:destroy()
-end
-
--- masks
-local masks: record{
-  position: BitsetArray,
-  velocity: BitsetArray,
-  name: BitsetArray
-} = {
-  position = BitsetArray.one(),           -- 1
-  velocity = BitsetArray.lshifted_one(1), -- 2
-  name     = BitsetArray.lshifted_one(2)  -- 4
-}
-
 -- systems data
-
 local Systems = @record{
   movement: SystemData,
   rightmost: SystemData
@@ -70,21 +50,6 @@ local Systems = @record{
 function Systems:destroy()
   self.movement:destroy()
   self.rightmost:destroy()
-end
-
-local systems_data: Systems = {
-  movement = SystemData.new{
-    masks.velocity,
-    masks.position
-  },
-  rightmost = SystemData.new{
-    masks.name,
-    masks.position
-  }
-}
-
-defer
-  systems_data:destroy()
 end
 
 local function movement_system(mov_system_data: *SystemData, velocity_storage: *Storage(Velocity), position_storage: *Storage(Position))
@@ -104,7 +69,7 @@ local function movement_system(mov_system_data: *SystemData, velocity_storage: *
   end
 end
 
-local function rightmost_system(rightmost: *Rightmost)
+local function rightmost_system(systems_data: *Systems, storages: *Storages, masks: *Masks, rightmost: *Rightmost)
   local rightmost_position = math.mininteger
 
   for i, ids in systems_data.rightmost:iterate_ids() do
@@ -126,70 +91,104 @@ local function rightmost_system(rightmost: *Rightmost)
   end
 end
 
--- here, we will store the ids
-local names_ids: vector(GenerationalIndex);
-names_ids:reserve(ENTITY_COUNT)
-defer
-  names_ids:destroy()
+local function basic()
+  -- masks
+  local masks: Masks = {
+    position = BitsetArray.one(),      -- 1
+    velocity = BitsetArray.one() << 1, -- 2
+    name     = BitsetArray.one() << 2  -- 4
+  }
+
+  local systems_data: Systems = {
+    movement = SystemData.new{
+      masks.velocity,
+      masks.position
+    },
+    rightmost = SystemData.new{
+      masks.name,
+      masks.position
+    }
+  }
+
+  defer
+    systems_data:destroy()
+  end
+
+  -- storages, its where components and entities will live
+  local storages: Storages = {
+    position = (@Storage(Position)).new(ENTITY_COUNT),
+    velocity = (@Storage(Velocity)).new(ENTITY_COUNT),
+    entity = (@Storage(Entity)).new(ENTITY_COUNT),
+    name = (@Storage(Name)).new(ENTITY_COUNT)
+  }
+
+  defer
+    storages:destroy()
+  end
+
+  -- here, we will store the ids
+  local names_ids: vector(GenerationalIndex);
+  names_ids:reserve(ENTITY_COUNT)
+  defer
+    names_ids:destroy()
+  end
+
+  -- let's create 1 entity!
+  print 'creating!'
+  for i = 0, < ENTITY_COUNT do
+    -- create an entity in the entities storage and get this new entity
+    local new_entity_id, new_entity = storages.entity:new_entry(Entity.new())
+
+    -- create the components in their respective storages.
+    -- storage.new_entry(value) returns a generational_index, it's used as an ID
+    -- create_position(x, y) returns just a new very simple table, remember?
+    math.randomseed(os.time())
+    local new_position_id, new_position = storages.position:new_entry({ x = math.random(-100, 100), y = i })
+
+    math.randomseed(os.time())
+    local new_velocity_id, new_velocity = storages.velocity:new_entry({ x = math.random(-200, 200), y = 0 })
+
+    -- storages accepts any value
+    local new_name_id, new_name = storages.name:new_entry("some entity")
+    names_ids:push(new_name_id)
+
+    -- this is how we associate an entity with a component (storage entry);
+    -- making a unique bitmask per storage is necessary
+    new_entity:associate(new_position_id, masks.position)
+    new_entity:associate(new_velocity_id, masks.velocity)
+    new_entity:associate(new_name_id, masks.name)
+
+    -- update the systems to use the new entity
+    systems_data.movement:update(new_entity)
+    systems_data.rightmost:update(new_entity)
+  end
+
+   --let's execute movement system 10x
+  for _ = 1, 10 do
+    print ('executing movement system')
+    movement_system(systems_data.movement, storages.velocity, storages.position)
+  end
+
+  local rightmost: Rightmost;
+
+  -- let's execute rightmost_system, note that 'rigtmost' variable
+  -- is not an storage, component, or something specific;
+  -- since systems are just functions that you can declare and use
+  -- in whathever way you want, there is absolutely no special thing
+  -- in executing systems, they are just functions.
+  print ('executing rightmost system')
+  rightmost_system(systems_data, storages, masks, rightmost)
+
+  for i, _, entity in storages.entity:iterate_entries() do
+    local name_id = names_ids[i]
+
+    entity:disassociate_by_storage(masks.position)
+    entity:disassociate_by_storage(masks.velocity)
+    entity:disassociate_by_component(name_id)
+  end
+
+  local name, pos_x = rightmost.name_component, rightmost.pos_component.x
+  print ("entity '", name, "' is in the rightmost position x: ", pos_x)
 end
 
--- let's create 1 entity!
-print 'creating!'
-for i = 0, < ENTITY_COUNT do
-  -- create an entity in the entities storage and get this new entity
-  local new_entity_id, new_entity = storages.entity:new_entry(Entity.new())
-
-  -- create the components in their respective storages.
-  -- storage.new_entry(value) returns a generational_index, it's used as an ID
-  -- create_position(x, y) returns just a new very simple table, remember?
-  math.randomseed(os.time())
-  local new_position_id, new_position = storages.position:new_entry((@Position){
-    x = math.random(-100, 100), y = i
-  })
-
-  math.randomseed(os.time())
-  local new_velocity_id, new_velocity = storages.velocity:new_entry((@Velocity){
-    x = math.random(-200, 200), y = 0
-  })
-
-  -- storages accepts any value
-  local new_name_id, new_name = storages.name:new_entry("some entity")
-  names_ids:push(new_name_id)
-
-  -- this is how we associate an entity with a component (storage entry);
-  -- making a unique bitmask per storage is necessary
-  new_entity:associate(new_position_id, masks.position)
-  new_entity:associate(new_velocity_id, masks.velocity)
-  new_entity:associate(new_name_id, masks.name)
-
-  -- update the systems to use the new entity
-  systems_data.movement:update(new_entity)
-  systems_data.rightmost:update(new_entity)
-end
-
- --let's execute movement system 10x
-for _ = 1, 10 do
-  print ('executing movement system')
-  movement_system(systems_data.movement, storages.velocity, storages.position)
-end
-
-local rightmost: Rightmost;
-
--- let's execute rightmost_system, note that 'rigtmost' variable
--- is not an storage, component, or something specific;
--- since systems are just functions that you can declare and use
--- in whathever way you want, there is absolutely no special thing
--- in executing systems, they are just functions.
-print ('executing rightmost system')
-rightmost_system(rightmost)
-
-for i, _, entity in storages.entity:iterate_entries() do
-  local name_id = names_ids[i]
-
-  entity:disassociate_by_storage(masks.position)
-  entity:disassociate_by_storage(masks.velocity)
-  entity:disassociate_by_component(name_id)
-end
-
-local name, pos_x = rightmost.name_component, rightmost.pos_component.x
-print ("entity '", name, "' is in the rightmost position x: ", pos_x)
+basic()

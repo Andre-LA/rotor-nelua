@@ -263,6 +263,6 @@ global Storage = #[make_storage]#
 
   print('index', 'id', 'entry.x', 'entry.y')
   for i, id, entry in storage_test:iterate_entries() do
-    print(i, tostring(id), entry.x, entry.y)
+    print(i, id.index, id.generation, entry.x, entry.y)
   end
 ## end -- ]]
