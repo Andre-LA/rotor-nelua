@@ -92,9 +92,9 @@ function BitsetArray.__shl(self: BitsetArray, steps: usize): BitsetArray
     for i = BITSETARRAY_SIZE - 1, 0, -1 do
       local next_bs_contains_leftmostbit = (do
         if i > 0 then
-          return result.data[i-1] & LEFTMOSTBIT == LEFTMOSTBIT
+          in result.data[i-1] & LEFTMOSTBIT == LEFTMOSTBIT
         end
-        return false
+        in false
       end)
 
       result.data[i] = result.data[i] << 1
@@ -116,9 +116,9 @@ function BitsetArray.__shr(self: BitsetArray, steps: uinteger): BitsetArray
     for i = 0, < BITSETARRAY_SIZE do
       local next_bs_contains_leftmostbit = (do
         if i < BITSETARRAY_SIZE - 1 then
-          return result.data[i+1] & 1 == 1
+          in result.data[i+1] & 1 == 1
         end
-        return false
+        in false
       end)
 
       result.data[i] = result.data[i] >> 1
