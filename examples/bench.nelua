@@ -57,7 +57,6 @@ function CircleEntity.new()
 
   e.entity_info.idx = e_idx
 
-
   ## if not NOLOG then
     print('SPAWN: ', e_idx.index, e_idx.generation)
   ## end
@@ -124,7 +123,6 @@ local function frame()
     ## if not NODRAWCOUNT then
       print('e_count: ', e_count)
     ## end
-
   end
   nene:render_present()
 end

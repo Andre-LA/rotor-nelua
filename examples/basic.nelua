@@ -6,9 +6,7 @@ local component = require 'rotor.component'
 local entity    = require 'rotor.entity'
 local system    = require 'rotor.system'
 
-local ENTITY_COUNT: uinteger <comptime> = #[ E_COUNT or 50000 ]#
-
--- components
+-- components --
 local Position = @component(@record{ x: integer, y: integer })
 local Velocity = @component(@record{ x: integer, y: integer })
 local Name     = @component(@record{ data: string })
@@ -18,9 +16,7 @@ local Rightmost = @record{
   name: Name
 }
 
-local rightmost: Rightmost
-
--- systems
+-- systems --
 local MovementSystem = @record{}
 
 function MovementSystem:run(c: record{vel: *Velocity, pos: *Position})
@@ -29,46 +25,45 @@ function MovementSystem:run(c: record{vel: *Velocity, pos: *Position})
 end
 
 local RightmostSystem = @record{
-  rightmost_position: integer,
+  rightmost: Rightmost,
 }
 
 function RightmostSystem:init()
-  self.rightmost_position = math.mininteger
+  self.rightmost.position.x = math.mininteger
 end
 
 function RightmostSystem:run(c: record{pos: *Position, name: *Name})
-  if c.pos.x > self.rightmost_position then
-    self.rightmost_position  = c.pos.x
-    rightmost.pos = $c.pos
-    rightmost.name = $c.name
+  if c.pos.x > self.rightmost.pos.x then
+    self.rightmost.pos = $c.pos
+    self.rightmost.name = $c.name
   end
 end
-
 
 local Systems = @record{
   movement_system: system(MovementSystem.run),
   rightmost_system: system(RightmostSystem.run),
 }
 
--- Entity type
+-- entity --
 local BasicEntity = @entity(@record{
   position: Position,
   velocity: Velocity,
   name: Name,
 })
 
-local entity_storage: storage(BasicEntity, ENTITY_COUNT)
+-- setup --
+local entity_storage: storage(BasicEntity, 64)
 local systems: Systems
 
 systems.rightmost_system.data:init()
 
--- let's create the entities!
+-- let's create 64 entities!
 print 'creating!'
 
-for i = 0, < ENTITY_COUNT do
+for i = 0, < 64 do
   math.randomseed(os.time())
 
-  -- create an new entity with an position, velocity and name
+  -- create a new entity with an position, velocity and name
   entity_storage:push({
     position = { x = math.random(-100, 100), y = i },
     velocity = { x = math.random(-200, 200), y = 0 },
@@ -76,7 +71,8 @@ for i = 0, < ENTITY_COUNT do
   })
 end
 
- --let's execute movement system 10x
+-- running --
+-- let's execute movement system 10 times
 for _ = 1, 10 do
   print ('executing movement system')
   systems.movement_system:run(&entity_storage)
@@ -85,5 +81,6 @@ end
 print ('executing rightmost system')
 systems.rightmost_system:run(&entity_storage)
 
-local name, pos_x = rightmost.name, rightmost.pos.x
-print ("entity '", name.data, "' is in the rightmost position x: ", pos_x)
+local rightmost = systems.rightmost_system.data.rightmost
+
+print ("entity '", rightmost.name.data, "' is in the rightmost position x: ", rightmost.pos.x)

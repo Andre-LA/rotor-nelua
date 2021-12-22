@@ -1,25 +1,95 @@
 # Rotor
 
-([Repository][project-repository] | [Original Lua Project][original-project])
+Rotor an ECS written in [Nelua][nelua-website].
 
-Rotor is a set of libraries for doing ECS in [Nelua][nelua-website].
+[Basic example][examples/basic.nelua]:
+```lua
+local math = require 'math'
+local os   = require 'os'
 
-_Note: I'm still learning Nelua (and even C), so problably there are some things I'm doing in the wrong way :s_
+local storage   = require 'rotor.storage'
+local component = require 'rotor.component'
+local entity    = require 'rotor.entity'
+local system    = require 'rotor.system'
 
-Check the [basic example][example-file].
+-- components --
+local Position = @component(@record{ x: integer, y: integer })
+local Velocity = @component(@record{ x: integer, y: integer })
+local Name     = @component(@record{ data: string })
 
-## Games using Rotor:
+local Rightmost = @record{
+  pos: Position,
+  name: Name
+}
 
-* [Castle Escape][games-castle-escape]
+-- systems --
+local MovementSystem = @record{}
 
-Open a issue on [Gitlab][gitlab-new-issue] or [Github][github-new-issue] to add your game :D
+function MovementSystem:run(c: record{vel: *Velocity, pos: *Position})
+  c.pos.x = c.pos.x + c.vel.x
+  c.pos.y = c.pos.y + c.vel.y
+end
 
-[example-file]: examples/basic.nelua
+local RightmostSystem = @record{
+  rightmost: Rightmost,
+}
+
+function RightmostSystem:init()
+  self.rightmost.position.x = math.mininteger
+end
+
+function RightmostSystem:run(c: record{pos: *Position, name: *Name})
+  if c.pos.x > self.rightmost.pos.x then
+    self.rightmost.pos = $c.pos
+    self.rightmost.name = $c.name
+  end
+end
+
+local Systems = @record{
+  movement_system: system(MovementSystem.run),
+  rightmost_system: system(RightmostSystem.run),
+}
+
+-- entity --
+local BasicEntity = @entity(@record{
+  position: Position,
+  velocity: Velocity,
+  name: Name,
+})
+
+-- setup --
+local entity_storage: storage(BasicEntity, 64)
+local systems: Systems
+
+systems.rightmost_system.data:init()
+
+-- let's create 64 entities!
+print 'creating!'
+
+for i = 0, < 64 do
+  math.randomseed(os.time())
+
+  -- create a new entity with an position, velocity and name
+  entity_storage:push({
+    position = { x = math.random(-100, 100), y = i },
+    velocity = { x = math.random(-200, 200), y = 0 },
+    name = { 'some entity' },
+  })
+end
+
+-- running --
+-- let's execute movement system 10 times
+for _ = 1, 10 do
+  print ('executing movement system')
+  systems.movement_system:run(&entity_storage)
+end
+
+print ('executing rightmost system')
+systems.rightmost_system:run(&entity_storage)
+
+local rightmost = systems.rightmost_system.data.rightmost
+
+print ("entity '", rightmost.name.data, "' is in the rightmost position x: ", rightmost.pos.x)
+```
+
 [nelua-website]: https://nelua.io/ "nelua's website"
-[original-project]: https://github.com/Andre-LA/Rotor
-[project-repository]: https://gitlab.com/Andre-LA/rotor-nelua
-
-[games-castle-escape]: https://github.com/Andre-LA/baixada-game-jam-game/
-
-[gitlab-new-issue]: https://gitlab.com/Andre-LA/rotor-nelua/-/issues/new
-[github-new-issue]: https://github.com/Andre-LA/Rotor-nelua/issues/new
