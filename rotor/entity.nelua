@@ -16,5 +16,8 @@ local storage = require 'rotor.storage'
   ## return entityT
 ## end)
 
+-- Entity generic used to instantiate an entity type in the form of `entity(T)`, where
+-- `T` must be a record and all it's fields must be components, otherwise it will result
+-- on a compile-time error.
 local entity: type = #[make_entity]#
 return entity

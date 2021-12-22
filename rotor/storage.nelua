@@ -94,5 +94,7 @@ local GenIdx = require 'rotor.gen_idx'
   ## return storageT
 ## end)
 
+-- Storage generic used to instantiate an storage type in the form of `component(T, size)`, where
+-- `size` is the maximum number of entries.
 local storage: type = #[make_storage]#
 return storage

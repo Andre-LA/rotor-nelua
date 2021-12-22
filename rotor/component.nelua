@@ -10,5 +10,7 @@
   ## return componentT
 ## end)
 
+-- Component generic used to instantiate an component type in the form of `component(T)`, where
+-- `T` must be a record on a compile-time error.
 local component: type = #[make_component]#
 return component
