@@ -1,0 +1,134 @@
+-- note: requires nene, see: https://github.com/Andre-LA/nene
+require 'nene'
+
+local math = require 'math'
+
+local storage   = require 'rotor.storage'
+local component = require 'rotor.component'
+local entity    = require 'rotor.entity'
+local system    = require 'rotor.system'
+local GenIdx    = require 'rotor.gen_idx'
+
+local e_count = 0_u
+local E_MAX <comptime> = #[ E_COUNT or 5000 ]#
+local E_DELTA <comptime> = #[ E_DELTA or 100 ]#
+
+local ok, nene = Nene.init('Basic Benchmark', 800, 600)
+check(ok)
+defer nene:terminate() end
+
+local Position = @component(@record{
+  x: number,
+  y: number,
+})
+
+local Velocity = @component(@record{
+  x: number,
+  y: number,
+})
+
+local Circle = @component(@record{
+  color: Color
+})
+
+local EntityInfo = @component(@record{
+  idx: GenIdx,
+})
+
+local CircleEntity = @entity(@record{
+  position: Position,
+  velocity: Velocity,
+  circle: Circle,
+  entity_info: EntityInfo,
+})
+
+local circle_entities_storage: storage(CircleEntity, E_MAX)
+
+function CircleEntity.new()
+  local ok, e_idx = circle_entities_storage:push({
+    position = { 0, 0 },
+    velocity = { math.random(25, 50), math.random(25, 50) },
+    circle = { color = Color.Palette.green },
+  })
+  check(ok)
+
+  local ok, e = circle_entities_storage:mget(e_idx)
+  check(ok)
+
+  e.entity_info.idx = e_idx
+
+
+  ## if not NOLOG then
+    print('SPAWN: ', e_idx.index, e_idx.generation)
+  ## end
+end
+
+function CircleEntity.remove(idx: GenIdx)
+  circle_entities_storage:remove(idx)
+  e_count = e_count - 1
+
+  ## if not NOLOG then
+    print('DEAD: ', idx.index, idx.generation)
+  ## end
+end
+
+local VelocityApplier = @record{}
+
+function VelocityApplier:run(c: record{position: *Position, velocity: *Velocity, entity_info: *EntityInfo})
+  c.position.x = c.position.x + c.velocity.x * nene.delta_time
+  c.position.y = c.position.y + c.velocity.y * nene.delta_time
+
+  if c.position.x > 800 or c.position.y > 600 then
+    if true or math.random(0.0, 1.0) < 0.4 then
+      CircleEntity.remove(c.entity_info.idx)
+    else
+      c.position.x, c.position.y = 0, 0
+    end
+  end
+end
+
+local CirclePainter = @record{}
+
+function CirclePainter:run(c: record{position: *Position, circle: *Circle})
+  local x, y = math.ifloor(c.position.x), math.ifloor(c.position.y)
+  nene:render_draw_rect({x, y, 1, 1}, false, c.circle.color)
+end
+
+local systems: record{
+  velocity_applier: system(VelocityApplier.run),
+  circle_painter: system(CirclePainter.run),
+}
+
+local function frame()
+  nene:poll_events()
+
+  for i = 1, E_DELTA do
+    if e_count < E_MAX then
+      CircleEntity.new()
+      e_count = e_count + 1
+    end
+  end
+
+  systems.velocity_applier:run(&circle_entities_storage)
+
+  nene:render_clear(Color.Palette.black)
+  do
+    ## if not NODRAW then
+      systems.circle_painter:run(&circle_entities_storage)
+    ## end
+
+    ## if not NOFPS then
+      print('dt: ', nene.delta_time)
+    ## end
+
+    ## if not NODRAWCOUNT then
+      print('e_count: ', e_count)
+    ## end
+
+  end
+  nene:render_present()
+end
+
+repeat
+  frame()
+until nene.quit

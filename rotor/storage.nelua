@@ -1,268 +1,98 @@
-require 'rotor.generational_index'
-require 'rotor.optional'
-require 'vector'
+local GenIdx = require 'rotor.gen_idx'
 
+## local make_storage = generalize(function(T, size)
+  ##[[
+  static_assert(
+    traits.is_number(size) and traits.is_integral(size) and size > 0,
+    'size "%s" is not an positive whole number',
+    size
+  )
+  ]]
 
-## local make_storage = generalize(function(T)
-  local T = @#[T]#
+  local SIZE <comptime> = #[size]#
 
-  local StorageT <nickname #[string.format('storage(%s)', T)]#> = @record{
-    next_free_ids: vector(GenerationalIndex),
-    entries: vector(T),
-    generations: vector(optional(uinteger)),
+  local T: type = #[T]#
+  ## local nicknameT = string.format('storage(%s)', T.nickname)
+
+  local storageT <nickname(#[nicknameT]#)> = @record{
+    entries: [SIZE]T,
+    unavailables: [SIZE]boolean,
+    generations: [SIZE]usize,
+    next_idx: usize,
   }
 
-  ## StorageT.value.is_storage = true
-  ## StorageT.value.subtype = T
+  ## storageT.value.is_container = true
+  ## storageT.value.is_storage = true
+  ## storageT.value.subtype = T
 
-  local function is_valid_entry(storage: *StorageT, gidx: GenerationalIndex): boolean
-    local gen = storage.generations[gidx.index]
-    return gen.filled and gidx.generation == gen:get()
-  end
+  local function find_next_available(storage: *storageT, next_idx: usize): (boolean, usize)
+    local idx = next_idx
+    local found = false
 
-  function StorageT.new(pre_reserve: facultative(usize)): StorageT
-    local newstorage: StorageT = {}
-    newstorage.next_free_ids:push({ 0, 1 })
-
-    ## if not pre_reserve.type.is_niltype then
-      newstorage:reserve(pre_reserve)
-    ## end
-
-    return newstorage
-  end
-
-  function StorageT:destroy(on_destroy_callback: facultative(function(entry: *T)))
-    self.next_free_ids:destroy()
-
-    ## if not on_destroy_callback.type.is_niltype then
-      for i = 0, < #self.entries do
-        on_destroy_callback(self.entries[i])
+    for i = 1, SIZE do
+      if storage.unavailables[idx] then
+        idx = (idx + 1) % SIZE
+      else
+        found = true
+        break
       end
-    ## end
-
-    self.entries:destroy()
-    self.generations:destroy()
-  end
-
-  function StorageT:reserve(n: usize)
-    self.entries:reserve(n)
-    self.generations:reserve(n)
-  end
-
-  function StorageT:new_entry(entry_content: T): (GenerationalIndex, *T)
-    if #self.next_free_ids == 0 then
-      self.next_free_ids:push({ 0, 1 })
     end
 
-    local next_free_id: GenerationalIndex = self.next_free_ids:pop()
+    return found, idx
+  end
 
-    local used_index = next_free_id.index < #self.generations
+  function storageT:push(value: T): (boolean, GenIdx)
+    local available_found, available_idx = find_next_available(self, self.next_idx)
 
-    local newgen: optional(uinteger);
-    newgen:set(next_free_id.generation)
+    if not available_found then
+      warn(#[storageT.value.nickname .. ": out of available entries, please increase the storage's size"]#)
+      return false, (@GenIdx)()
+    end
 
-    if used_index then
-      self.entries[next_free_id.index] = entry_content
-      self.generations[next_free_id.index] = newgen
+    self.next_idx = (available_idx + 1) % SIZE
+    self.entries[available_idx] = value
+    self.unavailables[available_idx] = true
+    self.generations[available_idx] = self.generations[available_idx] + 1
+
+    local gen_idx: GenIdx = { index = available_idx, generation = self.generations[available_idx] }
+    return true, gen_idx
+  end
+
+  function storageT:remove(idx: GenIdx)
+    if self.generations[idx.index] == idx.generation then
+      self.entries[idx.index] = {}
+      self.unavailables[idx.index] = false
+    end
+  end
+
+  function storageT:mget(idx: GenIdx): (boolean, *T)
+    if self.unavailables[idx.index] and self.generations[idx.index] == idx.generation then
+      return true, &self.entries[idx.index]
     else
-      self.entries:push(entry_content)
-      self.generations:push(newgen)
-      self.next_free_ids:push({ next_free_id.index + 1, 1 })
+      return false, nilptr
     end
-
-    -- return a copy of the gen_idx of this new entry and a pointer of the entry content
-    local entry: *T = &self.entries[next_free_id.index]
-    return next_free_id, entry
   end
 
-  function StorageT:get_entry(gen_idx: GenerationalIndex): optional(*T)
-    local result: optional(*T) = {}
+  function storageT:__mnext(ctrl_var: isize): (boolean, isize, *T)
+    ctrl_var = ctrl_var + 1
 
-    if is_valid_entry(self, gen_idx) then
-      result:set(&self.entries[gen_idx.index])
-    end
-
-    return result
-  end
-
-  -- TODO: make iterable using pairs and mpairs
-  function StorageT:iterate_entries(): (
-    function(state: *StorageT, ctrl_var: isize): (boolean, isize, GenerationalIndex, *T),
-    *StorageT,
-    isize
-  )
-    local function iterator(state: *StorageT, ctrl_var: isize): (boolean, isize, GenerationalIndex, *T)
-      ctrl_var = ctrl_var + 1
-
-      if ctrl_var < #state.entries then
-        local gen_opt = state.generations[ctrl_var]
-        if gen_opt.filled then
-          local gen_id: GenerationalIndex = {index = ctrl_var, generation = gen_opt:get()}
-          return true, ctrl_var, gen_id, &state.entries[ctrl_var]
-        end
+    while ctrl_var < SIZE do
+      if self.unavailables[ctrl_var] then
+        return true, ctrl_var, &self.entries[ctrl_var]
+      else
+        ctrl_var = ctrl_var + 1
       end
-
-      return false, -1, (@GenerationalIndex){0,0}, nilptr
     end
 
-    return iterator, self, -1
+    return false, -1, nilptr
   end
 
-  function StorageT:remove_entry(gen_idx: GenerationalIndex, on_remove_callback: facultative(function(entry: *T))): boolean
-    if not is_valid_entry(self, gen_idx) then
-      return false
-    end
-
-    ## if not on_remove_callback.type.is_niltype then
-      on_remove_callback(self.entries[gen_idx.index])
-    ## end
-
-    self.entries[gen_idx.index] = (@T)()
-    self.generations[gen_idx.index]:clear()
-
-    self.next_free_ids:push({ gen_idx.index, gen_idx.generation + 1 })
-
-    return true
+  function storageT:__mpairs(): (auto, *storageT, isize)
+    return storageT.__mnext, self, -1
   end
 
-  ## return StorageT
+  ## return storageT
 ## end)
 
-global Storage = #[make_storage]#
-
-## if TEST then -- [[
-  require 'string'
-
-  local ok_color <comptime> = #[string.char(27) .. '[' .. tostring(32) .. 'm']#
-  local err_color <comptime> = #[string.char(27) .. '[' .. tostring(31) .. 'm']#
-  local reset_color <comptime> = #[string.char(27) .. '[' .. tostring(0) .. 'm']#
-
-  local function _assert(cnd: boolean, msg: string)
-    local final_msg: stringview = err_color .. msg
-    assert(cnd, final_msg)
-  end
-
-  local TEST_X_VALUE = 123
-  local TEST_Y_VALUE = 789
-
-  -- record and storage type
-  local Vec = @record{
-    x: number,
-    y: number
-  }
-
-  local StorageVec: type = @Storage(Vec);
-  local storage_test: StorageVec = StorageVec.new()
-
-  _assert(#storage_test.next_free_ids == 1, 'test error: # of next_free_ids should be 1')
-  _assert(#storage_test.entries == 0, 'test error: # of entries should be 0')
-  _assert(#storage_test.generations == 0, 'test error: # of generations should be 0')
-
-  _assert(storage_test.next_free_ids[0].index == 0, 'test error: index of the next_free_ids[0] should be 0')
-  _assert(storage_test.next_free_ids[0].generation == 1, 'test error: generation of the next_free_ids[0] should be 1')
-
-  print 'test new_entry!'
-  local new_entry_id, new_entry = storage_test:new_entry({TEST_X_VALUE, TEST_Y_VALUE})
-
-  _assert(new_entry_id.index == 0, 'test error: new_entry_id.index should be 0')
-  _assert(new_entry_id.generation == 1, 'test error: new_entry_id.generation should be 1')
-  _assert(new_entry.x == TEST_X_VALUE, 'test error: new_entry.x should be TEST_X_VALUE')
-  _assert(new_entry.y == TEST_Y_VALUE, 'test error: new_entry.x should be TEST_Y_VALUE')
-
-  _assert(#storage_test.next_free_ids == 1, 'test error: # of next_free_ids should be 1, got ' .. #storage_test.next_free_ids)
-  _assert(storage_test.next_free_ids[0].index == 1, 'test error: index of the next_free_ids[0] should be 1')
-  _assert(storage_test.next_free_ids[0].generation == 1, 'test error: generation of the next_free_ids[0] should be 1')
-
-  _assert(#storage_test.entries == 1, 'test error: # of entries should be 1')
-  _assert(storage_test.entries[0].x == TEST_X_VALUE, 'test error: .entries[0] should be TEST_X_VALUE')
-  _assert(storage_test.entries[0].y == TEST_Y_VALUE, 'test error: .entries[0] should be TEST_Y_VALUE')
-
-  _assert(#storage_test.generations == 1, 'test error: # of generations should be 1')
-  _assert(storage_test.generations[0].filled, 'test error: .generations[0] should be .filled')
-  _assert(storage_test.generations[0]:get() == 1, 'test error: .generations[0]:get() should be 0')
-
-  print 'test get_entry!'
-  local possible_entry = storage_test:get_entry(new_entry_id)
-
-  _assert(possible_entry.filled, 'test error: obtained entry from storage is no filled')
-
-  local entry = possible_entry:get()
-  _assert(entry.x == TEST_X_VALUE and entry.y == TEST_Y_VALUE, 'test error: entry values are different')
-
-  print 'test 2nd new_entry!'
-
-  local new_entry_id_2, new_entry_2 = storage_test:new_entry({TEST_X_VALUE + 1, TEST_Y_VALUE + 1})
-  _assert(new_entry_id_2.index == 1, 'test error: new_entry_id.index should be 1')
-  _assert(new_entry_id_2.generation == 1, 'test error: new_entry_id.generation should be 1')
-  _assert(new_entry_2.x == TEST_X_VALUE+1, 'test error: new_entry.x should be TEST_X_VALUE+1')
-  _assert(new_entry_2.y == TEST_Y_VALUE+1, 'test error: new_entry.x should be TEST_Y_VALUE+1')
-
-  _assert(#storage_test.next_free_ids == 1, 'test error: # of next_free_ids should be 1')
-  _assert(storage_test.next_free_ids[0].index == 2, 'test error: index of the next_free_ids[0] should be 2')
-  _assert(storage_test.next_free_ids[0].generation == 1, 'test error: generation of the next_free_ids[0] should be 1')
-
-  _assert(#storage_test.entries == 2, 'test error: # of entries should be 2')
-  _assert(storage_test.entries[0].x == TEST_X_VALUE, 'test error: .entries[0] should be TEST_X_VALUE')
-  _assert(storage_test.entries[0].y == TEST_Y_VALUE, 'test error: .entries[0] should be TEST_Y_VALUE')
-  _assert(storage_test.entries[1].x == TEST_X_VALUE+1, 'test error: .entries[1] should be TEST_X_VALUE+1')
-  _assert(storage_test.entries[1].y == TEST_Y_VALUE+1, 'test error: .entries[1] should be TEST_Y_VALUE+1')
-
-  _assert(#storage_test.generations == 2, 'test error: # of generations should be 2')
-  _assert(storage_test.generations[0].filled, 'test error: .generations[0] should be .filled')
-  _assert(storage_test.generations[0]:get() == 1, 'test error: .generations[0]:get() should be 1')
-  _assert(storage_test.generations[1].filled, 'test error: .generations[1] should be .filled')
-  _assert(storage_test.generations[1]:get() == 1, 'test error: .generations[1]:get() should be 1')
-
-  print 'test remove_entry!'
-  local removal_result = storage_test:remove_entry(new_entry_id)
-
-  _assert(#storage_test.next_free_ids == 2, 'test error: # of next_free_ids should be 2')
-  _assert(storage_test.next_free_ids[0].index == 2, 'test error: index of the next_free_ids[0] should be 2')
-  _assert(storage_test.next_free_ids[0].generation == 1, 'test error: generation of the next_free_ids[0] should be 1')
-  _assert(storage_test.next_free_ids[1].index == 0, 'test error: index of the next_free_ids[1] should be 0')
-  _assert(storage_test.next_free_ids[1].generation == 2, 'test error: generation of the next_free_ids[1] should be 2')
-
-  _assert(#storage_test.entries == 2, 'test error: # of entries should be 2')
-  _assert(storage_test.entries[0].x ~= TEST_X_VALUE, "test error: .entries[0] shouldn't be TEST_X_VALUE")
-  _assert(storage_test.entries[0].y ~= TEST_Y_VALUE, "test error: .entries[0] shouldn't be TEST_Y_VALUE")
-  _assert(storage_test.entries[1].x == TEST_X_VALUE+1, 'test error: .entries[1] should be TEST_X_VALUE+1')
-  _assert(storage_test.entries[1].y == TEST_Y_VALUE+1, 'test error: .entries[1] should be TEST_Y_VALUE+1')
-
-  _assert(#storage_test.generations == 2, 'test error: # of generations should be 2')
-  _assert(not storage_test.generations[0].filled, "test error: .generations[0] shouldn't be .filled")
-  _assert(storage_test.generations[1].filled, 'test error: .generations[1] should be .filled')
-  _assert(storage_test.generations[1]:get() == 1, 'test error: .generations[1]:get() should be 1')
-
-  print 'test 3rd new_entry!'
-
-  local new_entry_id_3, new_entry_3 = storage_test:new_entry({TEST_X_VALUE + 2, TEST_Y_VALUE + 2})
-  _assert(new_entry_id_3.index == 0, 'test error: new_entry_id.index should be 0')
-  _assert(new_entry_id_3.generation == 2, 'test error: new_entry_id.generation should be 2')
-  _assert(new_entry_3.x == TEST_X_VALUE+2, 'test error: new_entry.x should be TEST_X_VALUE+2')
-  _assert(new_entry_3.y == TEST_Y_VALUE+2, 'test error: new_entry.x should be TEST_Y_VALUE+2')
-
-  _assert(#storage_test.next_free_ids == 1, 'test error: # of next_free_ids should be 1, got ' .. #storage_test.next_free_ids)
-  _assert(storage_test.next_free_ids[0].index == 2, 'test error: index of the next_free_ids[0] should be 2')
-  _assert(storage_test.next_free_ids[0].generation == 1, 'test error: generation of the next_free_ids[0] should be 1')
-
-  _assert(#storage_test.entries == 2, 'test error: # of entries should be 2')
-  _assert(storage_test.entries[0].x == TEST_X_VALUE+2, 'test error: .entries[0] should be TEST_X_VALUE+2')
-  _assert(storage_test.entries[0].y == TEST_Y_VALUE+2, 'test error: .entries[0] should be TEST_Y_VALUE+2')
-  _assert(storage_test.entries[1].x == TEST_X_VALUE+1, 'test error: .entries[1] should be TEST_X_VALUE+1')
-  _assert(storage_test.entries[1].y == TEST_Y_VALUE+1, 'test error: .entries[1] should be TEST_Y_VALUE+1')
-
-  _assert(#storage_test.generations == 2, 'test error: # of generations should be 2')
-  _assert(storage_test.generations[0].filled, 'test error: .generations[0] should be .filled')
-  _assert(storage_test.generations[0]:get() == 2, 'test error: .generations[0]:get() should be 2')
-  _assert(storage_test.generations[1].filled, 'test error: .generations[1] should be .filled')
-  _assert(storage_test.generations[1]:get() == 1, 'test error: .generations[1]:get() should be 1')
-
-  print(ok_color .. 'storage test: ok' .. reset_color)
-
-  print('printing all entries using for-in')
-
-  print('index', 'id', 'entry.x', 'entry.y')
-  for i, id, entry in storage_test:iterate_entries() do
-    print(i, id.index, id.generation, entry.x, entry.y)
-  end
-## end -- ]]
+local storage: type = #[make_storage]#
+return storage

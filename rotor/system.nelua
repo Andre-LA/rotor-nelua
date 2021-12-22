@@ -1,0 +1,100 @@
+require 'iterators'
+
+local storage = require 'rotor.storage'
+
+## local make_system = generalize(function(sysfn)
+  ##[[
+  static_assert(
+    sysfn.ftype.argtypes and #sysfn.ftype.argtypes == 2,
+    "the run function should have 2 arguments," ..
+    " the 1st should be the system's record pointer (like the `self` argument when using the method syntax)," ..
+    " the 2nd should be a record of component pointers to be processed."
+  )
+
+  local sysfn_selftype = sysfn.ftype.argtypes[1]
+
+  static_assert(
+    traits.is_type(sysfn_selftype) and
+    sysfn_selftype.is_pointer and
+    sysfn_selftype.subtype.is_record,
+    'the first run function argument is not a type or a record pointer'
+  )
+
+  local sysfn_compstype = sysfn.ftype.argtypes[2]
+
+  static_assert(
+    traits.is_type(sysfn_compstype) and sysfn_compstype.is_record,
+    'the second run function argument is not a type or a record'
+  )
+
+  for _, sysfn_field in ipairs(sysfn_compstype.fields) do
+    static_assert(
+      -- analyze pointer
+      traits.is_type(sysfn_field.type) and
+      sysfn_field.type.is_pointer and
+      -- analyze pointer's subtype
+      traits.is_type(sysfn_field.type.subtype) and
+      sysfn_field.type.subtype.is_record and
+      sysfn_field.type.subtype.is_component,
+      -- err msg:
+      "the field '%s' of the second run function argument is neither a type, a record pointer or a component pointer",
+      sysfn_field.name
+      )
+  end
+  ]]
+
+  local systemdata: type = @#[sysfn_selftype.subtype]#
+
+  local systemT: type = @record{
+    data: systemdata,
+  }
+
+  function systemT:run(...: varargs)
+    ## for i=1, select('#', ...) do
+      ## local si = select(i, ...)
+      local EStorage: type = @#[si.attr.type.subtype]#
+      local EType: type = @#[EStorage.value.subtype]#
+
+      -- verify if the iterated entity type pass the system's filter at compile time
+      ##[[
+      local fields_count = 0
+      for _, sysfn_field in ipairs(sysfn_compstype.fields) do
+        for _, e_field in ipairs(EType.value.fields) do
+          if e_field.type == sysfn_field.type.subtype then
+            fields_count = fields_count + 1
+          end
+        end
+      end
+      ]]
+
+      -- run system on all entities instances of the iterated entity type only
+      -- if it pass the test
+      ## if fields_count == #sysfn_compstype.fields then
+        -- for each entity (ptr) of the iterated entity storage
+        for _, e: pointer(EType) in mpairs(#[si]#) do
+          local comps_data: #[sysfn_compstype]# = {}
+
+          ## for _, sysfn_field in ipairs(sysfn_compstype.fields) do
+            ## for _, e_field in ipairs(EType.value.fields) do
+              ## if e_field.type == sysfn_field.type.subtype then
+                comps_data.#|sysfn_field.name|# = &e.#|e_field.name|#
+              ## end
+            ## end
+          ## end
+
+          -- nilptr safety check
+          ## for _, sysfn_field in ipairs(sysfn_compstype.fields) do
+            check(comps_data.#|sysfn_field.name|#, #[sysfn_field.name..' is nilptr!']#)
+          ## end
+
+          sysfn!(self.data, comps_data)
+        end
+      ## end
+    ## end
+  end
+
+  ## return systemT
+## end)
+
+local system: type = #[make_system]#
+return system

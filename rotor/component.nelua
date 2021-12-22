@@ -1,0 +1,14 @@
+## local make_component = generalize(function(T)
+  ##[[
+  static_assert(traits.is_type(T), 'passed value %s is not a type', T)
+  static_assert(T.is_record, 'passed value %s is not a record', T)
+  ]]
+
+  local componentT: type = @#[T]#
+  ## componentT.value.is_component = true
+
+  ## return componentT
+## end)
+
+local component: type = #[make_component]#
+return component
