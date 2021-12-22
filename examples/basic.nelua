@@ -29,7 +29,7 @@ local RightmostSystem = @record{
 }
 
 function RightmostSystem:init()
-  self.rightmost.position.x = math.mininteger
+  self.rightmost.pos.x = math.mininteger
 end
 
 function RightmostSystem:run(c: record{pos: *Position, name: *Name})
