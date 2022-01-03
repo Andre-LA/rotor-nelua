@@ -41,6 +41,12 @@ local GenIdx = require 'rotor.gen_idx'
     return found, idx
   end
 
+  function storageT:clear()
+    self.unavailables = {}
+    self.generations = {}
+    self.next_idx = 0
+  end
+
   function storageT:push(value: T): (boolean, GenIdx)
     local available_found, available_idx = find_next_available(self, self.next_idx)
 
