@@ -1,5 +1,7 @@
--- Component generic used to instantiate an component type in the form of `component(T)`, where
--- `T` must be a record on a compile-time error.
+--[[
+Component generic used to instantiate an component type in the form of `component(T)`, where
+`T` must be a record, otherwise it will result on a compile-time error.
+]]
 
 ## local make_component = generalize(function(T)
   ##[[
@@ -22,6 +24,7 @@ Usage:
 local component = require 'rotor.component'
 
 local vec2 = @record{ x: number, y: number }
+
 local Position = @component(@record{
   pos: vec2
 })
