@@ -1,26 +1,18 @@
--- Entity generic used to instantiate an entity type in the form of `entity(T)`, where
--- `T` must be a record and all it's fields must be components, otherwise it will result
--- on a compile-time error.
+### Summary
+* [entity](#entity)
 
-local storage = require 'rotor.storage'
+## entity
 
-## local make_entity = generalize(function(T)
-  ##[[
-  static_assert(traits.is_type(T), 'passed value %s is not a type', T)
-  static_assert(T.is_record, 'passed value %s is not a record', T)
+Entity generic used to instantiate an entity type in the form of `entity(T)`, where
+`T` must be a record and all it's fields must be components, otherwise it will result
+on a compile-time error.
 
-  for i, field in ipairs(T.fields) do
-    static_assert(field.type.is_component, 'field %s is not a component', field)
-  end
-  ]]
+### entity
 
-  local entityT: type = @#[T]#
-  ## entityT.value.is_entity = true
+```lua
+local entity: type
+```
 
-  ## return entityT
-## end)
-
---[[
 The entity type of the module
 
 Usage:
@@ -54,6 +46,4 @@ local my_entity: BasicEntity = {
 ## static_assert(my_entity.type.is_entity)
 ```
 
-]]
-local entity: type = #[make_entity]#
-return entity
+---

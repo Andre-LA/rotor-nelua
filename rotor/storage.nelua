@@ -1,3 +1,16 @@
+--[[
+The storage module, it's a type constructor where you pass a type `T` and a non-zero positive
+integer `size` value.
+
+The result is a storage type capable of storing `size` entries of type `T`, always re-using
+free slots as possible.
+
+For example, if you use a storage capable of storing 3 entries and you push 3 entries on it,
+and then removes the second entry, then a fourth entry can be pushed and it will use the second
+slot, thus the generational index of this fourth entry will be a second generation of the second slot.
+]]
+
+
 local GenIdx = require 'rotor.gen_idx'
 
 ## local make_storage = generalize(function(T, size)
@@ -14,6 +27,7 @@ local GenIdx = require 'rotor.gen_idx'
   local T: type = #[T]#
   ## local nicknameT = string.format('storage(%s)', T.nickname)
 
+  -- the storage type
   local storageT <nickname(#[nicknameT]#)> = @record{
     entries: [SIZE]T,
     unavailables: [SIZE]boolean,
@@ -41,12 +55,21 @@ local GenIdx = require 'rotor.gen_idx'
     return found, idx
   end
 
+  -- resets storage to a zeroed state
   function storageT:clear()
     self.unavailables = {}
     self.generations = {}
     self.next_idx = 0
   end
 
+  --[[
+  Push a new entry on the storage on the next free slot, if no free slots are available,
+  then a warning will be printed and this function will return `false` and a zeroed generational
+  index.
+
+  Otherwise, the entry will be inserted on the found free slot and this function will return `true`
+  and the generational index of the used slot.
+  ]]
   function storageT:push(value: T): (boolean, GenIdx)
     local available_found, available_idx = find_next_available(self, self.next_idx)
 
@@ -64,13 +87,29 @@ local GenIdx = require 'rotor.gen_idx'
     return true, gen_idx
   end
 
-  function storageT:remove(idx: GenIdx)
+  --[[
+  Removes an entry associated with the generational index.
+
+  If the entry is found, then the slot it's zeroed and the function returns `true`. Othewise
+  it does nothing and returns `false`.
+  ]]
+  function storageT:remove(idx: GenIdx): boolean
     if self.generations[idx.index] == idx.generation then
       self.entries[idx.index] = {}
       self.unavailables[idx.index] = false
+      return true
     end
+    return false
   end
 
+  --[[
+  Try to find the entry of the generational index.
+
+  If found, then it returns `true` and a reference to the entry on the storage. Otherwise, it
+  returns `false` and a `nilptr`.
+
+  To void undefined behavior, always check or assert the returned boolean value.
+  ]]
   function storageT:mget(idx: GenIdx): (boolean, *T)
     if self.unavailables[idx.index] and self.generations[idx.index] == idx.generation then
       return true, &self.entries[idx.index]
@@ -79,6 +118,7 @@ local GenIdx = require 'rotor.gen_idx'
     end
   end
 
+  -- mnext method, used by `__mpairs` method, it finds the next entry to iterate.
   function storageT:__mnext(ctrl_var: isize): (boolean, isize, *T)
     ctrl_var = ctrl_var + 1
 
@@ -93,6 +133,10 @@ local GenIdx = require 'rotor.gen_idx'
     return false, -1, nilptr
   end
 
+  --[[
+  Iterator for `mpairs`, this allows using `for in` using the `mpairs` iterator on
+  the storage, it iterates only on the entries and skips unused slots.
+  ]]
   function storageT:__mpairs(): (auto, *storageT, isize)
     return storageT.__mnext, self, -1
   end

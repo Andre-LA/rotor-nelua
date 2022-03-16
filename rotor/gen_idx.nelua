@@ -1,10 +1,13 @@
--- Generational Indexes, it identifies an index with an generation, making
+-- Generational Indexes, it identifies an index with a generation, making
 -- each index unique between re-uses.
 local GenIdx = @record{
   index: usize,      -- 0-based, since this is an index for arrays
   generation: usize, -- 1-based: 1 is the "first" valid generation, 0 is invalid
 }
 
+-- Equality test for generational indexes
+--
+-- It compares if the index and the generation of both operands are equal
 function GenIdx.__eq(l: GenIdx, r: GenIdx): boolean
   return l.index == r.index and l.generation == r.generation
 end
