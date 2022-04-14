@@ -1,28 +1,11 @@
 ### Summary
 * [entity](#entity)
-* [entity](#entity)
 
 ## entity
 
 Entity generic used to instantiate an entity type in the form of `entity(T)`, where
 `T` must be a record and all it's fields must be components, otherwise it will result
 on a compile-time error.
-
-### entity
-
-```lua
-local entity: type = @#[T]#
-```
-
-
-
-### entity
-
-```lua
-local entity: type
-```
-
-The entity type of the module
 
 Usage:
 
@@ -54,5 +37,13 @@ local my_entity: BasicEntity = {
 ## static_assert(BasicEntity.value.is_entity)
 ## static_assert(my_entity.type.is_entity)
 ```
+
+### entity
+
+```lua
+local entity: type
+```
+
+
 
 ---
