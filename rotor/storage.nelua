@@ -64,18 +64,18 @@ local GenIdx = require 'rotor.gen_idx'
 
   --[[
   Push a new entry on the storage on the next free slot, if no free slots are available,
-  then a warning will be printed and this function will return `false` and a zeroed generational
-  index.
+  then a warning will be printed and this function will return `false`, a zeroed generational
+  index and `nilptr`.
 
-  Otherwise, the entry will be inserted on the found free slot and this function will return `true`
-  and the generational index of the used slot.
+  Otherwise, the entry will be inserted on the found free slot and this function will return `true`,
+  the generational index of the used slot and a reference to the inserted entry.
   ]]
-  function storageT:push(value: T): (boolean, GenIdx)
+  function storageT:push(value: T): (boolean, GenIdx, *T)
     local available_found, available_idx = find_next_available(self, self.next_idx)
 
     if not available_found then
       warn(#[storageT.value.nickname .. ": out of available entries, please increase the storage's size"]#)
-      return false, (@GenIdx)()
+      return false
     end
 
     self.next_idx = (available_idx + 1) % SIZE
@@ -84,7 +84,7 @@ local GenIdx = require 'rotor.gen_idx'
     self.generations[available_idx] = self.generations[available_idx] + 1
 
     local gen_idx: GenIdx = { index = available_idx, generation = self.generations[available_idx] }
-    return true, gen_idx
+    return true, gen_idx, &self.entries[available_idx]
   end
 
   --[[
