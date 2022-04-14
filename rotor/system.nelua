@@ -45,12 +45,12 @@ local storage = require 'rotor.storage'
 
   local systemdata: type = @#[sysfn_selftype.subtype]#
 
-  local systemT: type = @record{
+  local system: type = @record{
     data: systemdata,
   }
 
   -- run the system by passing a variable count of entity storages pointers.
-  function systemT:run(...: varargs)
+  function system:run(...: varargs)
     ## for i=1, select('#', ...) do
       ## local si = select(i, ...)
       local EStorage: type = @#[si.attr.type.subtype]#
@@ -94,7 +94,7 @@ local storage = require 'rotor.storage'
     ## end
   end
 
-  ## return systemT
+  ## return system
 ## end)
 
 -- System generic used to instantiate an system runtime type in the form of `system(T)`, where:

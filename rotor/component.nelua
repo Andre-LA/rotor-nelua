@@ -9,10 +9,10 @@ Component generic used to instantiate an component type in the form of `componen
   static_assert(T.is_record, 'passed value %s is not a record', T)
   ]]
 
-  local componentT: type = @#[T]#
-  ## componentT.value.is_component = true
+  local component: type = @#[T]#
+  ## component.value.is_component = true
 
-  ## return componentT
+  ## return component
 ## end)
 
 --[[

@@ -1,11 +1,20 @@
 ### Summary
 * [entity](#entity)
+* [entity](#entity)
 
 ## entity
 
 Entity generic used to instantiate an entity type in the form of `entity(T)`, where
 `T` must be a record and all it's fields must be components, otherwise it will result
 on a compile-time error.
+
+### entity
+
+```lua
+local entity: type = @#[T]#
+```
+
+
 
 ### entity
 

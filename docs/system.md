@@ -1,5 +1,25 @@
 ### Summary
 * [system](#system)
+* [system:run](#systemrun)
+* [system](#system)
+
+### system
+
+```lua
+local system: type = @record{
+    data: systemdata,
+  }
+```
+
+
+
+### system:run
+
+```lua
+function system:run(...: varargs)
+```
+
+run the system by passing a variable count of entity storages pointers.
 
 ### system
 

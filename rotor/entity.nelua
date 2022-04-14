@@ -14,10 +14,10 @@ local storage = require 'rotor.storage'
   end
   ]]
 
-  local entityT: type = @#[T]#
-  ## entityT.value.is_entity = true
+  local entity: type = @#[T]#
+  ## entity.value.is_entity = true
 
-  ## return entityT
+  ## return entity
 ## end)
 
 --[[

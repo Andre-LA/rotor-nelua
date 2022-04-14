@@ -17,7 +17,7 @@ local function doc(filename, path)
   if string.find(filename, '.nelua') then
     print('documenting '..path..filename..'..')
 
-    nldoc.generate_doc(emitter, path..filename, { symbol_template = symbol_template })
+    nldoc.generate_doc(emitter, 'rotor/'..path..filename, { symbol_template = symbol_template })
 
     local emitted = emitter:generate()
 
@@ -29,12 +29,12 @@ local function doc(filename, path)
 
     local outfilename = filename:gsub('.nelua', '.md')
 
-    nldoc.write_file('docs/'..outfilename, table.concat(summary)..'\n'..emitted)
+    nldoc.write_file('docs/'..path..outfilename, table.concat(summary)..'\n'..emitted)
   end
 end
 
 local function doc_dir(dirname)
-  local path = string.gsub(dirname, 'nene/', '')
+  local path = string.gsub(dirname, 'rotor/', '')
 
   local ignored_files = {
   }
