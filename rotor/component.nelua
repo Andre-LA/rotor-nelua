@@ -1,22 +1,8 @@
 --[[
+The component module
+
 Component generic used to instantiate an component type in the form of `component(T)`, where
 `T` must be a record, otherwise it will result on a compile-time error.
-]]
-
-## local make_component = generalize(function(T)
-  ##[[
-  static_assert(traits.is_type(T), 'passed value %s is not a type', T)
-  static_assert(T.is_record, 'passed value %s is not a record', T)
-  ]]
-
-  local component: type = @#[T]#
-  ## component.value.is_component = true
-
-  ## return component
-## end)
-
---[[
-The component type of the module
 
 Usage:
 
@@ -37,5 +23,18 @@ local position: Position = { pos = { x = 10, y = 20 } }
 ## static_assert(position.type.is_component)
 ```
 ]]
+
+## local make_component = generalize(function(T)
+  ##[[
+  static_assert(traits.is_type(T), 'passed value %s is not a type', T)
+  static_assert(T.is_record, 'passed value %s is not a record', T)
+  ]]
+
+  local componentT: type = @#[T]#
+  ## componentT.value.is_component = true
+
+  ## return componentT
+## end)
+
 local component: type = #[make_component]#
 return component

@@ -1,27 +1,12 @@
 ### Summary
 * [component](#component)
-* [component](#component)
 
 ## component
 
+The component module
+
 Component generic used to instantiate an component type in the form of `component(T)`, where
 `T` must be a record, otherwise it will result on a compile-time error.
-
-### component
-
-```lua
-local component: type = @#[T]#
-```
-
-
-
-### component
-
-```lua
-local component: type
-```
-
-The component type of the module
 
 Usage:
 
@@ -41,5 +26,13 @@ local position: Position = { pos = { x = 10, y = 20 } }
 ## static_assert(Position.value.is_component)
 ## static_assert(position.type.is_component)
 ```
+
+### component
+
+```lua
+local component: type
+```
+
+
 
 ---
