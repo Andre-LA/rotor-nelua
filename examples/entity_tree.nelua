@@ -1,0 +1,174 @@
+--[[
+This example simulates a simple unrealistic solar system,
+this code it's just to showcase how an entity tree can be made in Rotor.
+
+Note: you will need nene in order to run this example: https://github.com/Andre-LA/nene/
+]]
+
+-- nelua
+local math = require 'math'
+
+-- rotor
+local storage   = require 'rotor.storage'
+local component = require 'rotor.component'
+local entity    = require 'rotor.entity'
+local system    = require 'rotor.system'
+local concepts  = require 'rotor.concepts'
+
+-- nene
+local Nene = require 'nene'
+local Vec2 = require 'nene.math.vec2'
+local Color = require 'nene.color'
+
+-- components --
+local Name = @component(string)
+local SunTag = @component(record{})
+
+local Position = @component(@record{
+  origin_pos: Vec2,
+  local_pos: Vec2,
+})
+
+function Position:final_pos()
+  return self.origin_pos + self.local_pos
+end
+
+local OrbitalBody = @component(@record{
+  current_angle: number,
+  speed: number,
+  distance: number,
+  size: cint,
+  color: Color,
+})
+
+function OrbitalBody:update(pos: *Position, dt: number)
+  local nene = Nene.instance()
+
+  self.current_angle = self.current_angle + self.speed * nene.delta_time
+
+  pos.local_pos.x = math.cos(self.current_angle) * self.distance
+  pos.local_pos.y = math.sin(self.current_angle) * self.distance
+end
+
+-- entities --
+local Moon = @entity(@record{
+  position: Position,
+  orbital_body: OrbitalBody,
+})
+
+local Earth = @entity(@record{
+  position: Position,
+  orbital_body: OrbitalBody,
+
+  -- making a child entity it's just a matter of making it a field of the parent entity
+  moon: Moon,
+})
+
+local Sun = @entity(@record{
+  position: Position,
+  orbital_body: OrbitalBody,
+  sun: SunTag,
+
+  earth: Earth,
+})
+
+-- there is no need to make storages for Earth and Moon, because they're
+-- stored on the sun entity entry already.
+local Sun.storage: storage(Sun, 1)
+
+-- systems --
+-- solar system
+local SolarSystem = @record{}
+
+local function position_hierarchy(entity_ptr: #[concepts.value.an_entity_ptr_with({Position.value})]#)
+  ## local entity_type = entity_ptr.type.subtype
+
+  ## for _, child_field in ipairs(entity_type:find_children_fields({Position.value})) do
+    ## local child_pos_field = child_field.type:find_fields_of_type(Position.value)[1]
+
+    local child_entity = &entity_ptr.#|child_field.name|#
+
+    child_entity.position.origin_pos = entity_ptr.position:final_pos()
+    position_hierarchy(child_entity)
+  ## end
+end
+
+local function orbital_bodies_hierarchy(entity_ptr: concepts.an_entity_ptr)
+  ## local entity_type = entity_ptr.type.subtype
+
+  entity_ptr.orbital_body:update(entity_ptr.position)
+
+  ## for _, child_field in ipairs(entity_type:find_children_fields({Position.value, OrbitalBody.value})) do
+    local child_entity = &entity_ptr.#|child_field.name|#
+    orbital_bodies_hierarchy(child_entity)
+  ## end
+end
+
+--[[
+Since only the Sun entity contains a SunTag component, rotor will surely only run this
+system on the Sun entity, thus we can just use the Sun entity type already on the 3rd arg.,
+without needing to use a concept.
+
+This also means that SolarSystem.run it's just a regular function, not a polyfunction,
+however this is not particularly relevant in this example.
+]]
+function SolarSystem:run(c: record{ position: *Position, sun_tag: *SunTag }, sun: *Sun)
+  orbital_bodies_hierarchy(sun)
+  position_hierarchy(sun)
+end
+
+local solar_system: system(SolarSystem.run)
+
+-- planet visualization
+local OrbitalBodyPainter = @record{}
+
+function OrbitalBodyPainter:run(c: record{ position: *Position, orbital_body: *OrbitalBody })
+  local nene = Nene.instance()
+  local pos = c.position:final_pos() + Vec2{ -(c.orbital_body.size//2), -(c.orbital_body.size//2) }
+
+  nene:render_draw_rect({ pos.x, pos.y, c.orbital_body.size, c.orbital_body.size }, false, c.orbital_body.color)
+end
+
+local orbital_body_painter: system(OrbitalBodyPainter.run)
+
+-- app --
+local ok, nene <close> = Nene.init('Entity Tree', 800, 600)
+check(ok)
+
+local ok, id, sun: *Sun = Sun.storage:push({
+  position = {{ (400-32), (300-32) }},
+  orbital_body = {
+    size = 32,
+    color = Color.Palette.yellow,
+  },
+
+  earth = {
+    orbital_body = {
+      speed = 1,
+      distance = 256,
+      size = 64,
+      color = Color.Palette.green,
+    },
+    moon = {
+      orbital_body = {
+        speed = 2,
+        distance = 96,
+        size = 16,
+        color = Color.Palette.white,
+      },
+    },
+  }
+})
+check(ok)
+
+repeat
+  nene:poll_events()
+  nene:render_clear(Color.Palette.bg)
+
+    -- just for the sake of showcase, in rotor you can pass a storage or
+    -- the entity directly to the system.
+    solar_system:run(&Sun.storage)
+    orbital_body_painter:run(sun)
+
+  nene:render_present()
+until nene.quit
