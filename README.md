@@ -7,6 +7,7 @@ Please check the [docs](docs) and the [examples](examples).
 ```lua
 local math = require 'math'
 local os   = require 'os'
+local io   = require 'io'
 
 local storage   = require 'rotor.storage'
 local component = require 'rotor.component'
@@ -36,7 +37,7 @@ local RightmostSystem = @record{
 }
 
 function RightmostSystem:init()
-  self.rightmost.position.x = math.mininteger
+  self.rightmost.pos.x = math.mininteger
 end
 
 function RightmostSystem:run(c: record{pos: *Position, name: *Name})
@@ -71,11 +72,13 @@ for i = 0, < 64 do
   math.randomseed(os.time())
 
   -- create a new entity with an position, velocity and name
-  entity_storage:push({
+  local ok, id, entity = entity_storage:push({
     position = { x = math.random(-100, 100), y = i },
     velocity = { x = math.random(-200, 200), y = 0 },
     name = { 'some entity' },
   })
+  assert(ok)
+  assert(entity.name.data == 'some entity')
 end
 
 -- running --
@@ -90,7 +93,7 @@ systems.rightmost_system:run(&entity_storage)
 
 local rightmost = systems.rightmost_system.data.rightmost
 
-print ("entity '", rightmost.name.data, "' is in the rightmost position x: ", rightmost.pos.x)
+io.printf("entity '%s' is in the rightmost position.x: %d\n", rightmost.name.data, rightmost.pos.x)
 ```
 
 [nelua-website]: https://nelua.io/ "nelua's website"
