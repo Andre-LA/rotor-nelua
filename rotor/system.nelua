@@ -3,11 +3,12 @@ The system module.
 
 System generic used to instantiate an system runtime type in the form of `system(T)`, where:
 * `T` is an "run" function (it doesn't need to be named as "run")
-* the "run" function should have 2 arguments:
-  - the 1st should be the system's record pointer (like the `self` argument when using the method syntax)
-  - the 2nd should be a record of component pointers to be processed.
+* the "run" function should have 2 or 3 parameters:
+  - the 1st should be the system's record pointer (the `self` parameter when using the method syntax)
+  - the 2nd should be a record of either component or entity pointers to be processed.
+  - the 3rd parameter it's optional, if given, it should be an entity parameter or an entity concept.
 
-Any no satisfied condition will result in a compile-time error.
+Any no satisfied condition should result in a compile-time error.
 
 Usage:
 ```lua
@@ -26,20 +27,26 @@ local movement_system: system(MovementSystem.run)
 
 movement_system:run(&my_entity_storage)
 ```
+
+For a better understanding, see the examples.
 ]]
 
 require 'iterators'
 
 local storage = require 'rotor.storage'
+local concepts = require 'rotor.concepts'
 
 ## local make_system = generalize(function(sysfn)
   ##[[
   static_assert(
-    sysfn.ftype.argtypes and #sysfn.ftype.argtypes == 2,
-    "the run function should have 2 arguments," ..
-    " the 1st should be the system's record pointer (like the `self` argument when using the method syntax)," ..
-    " the 2nd should be a record of component pointers to be processed."
+    sysfn.ftype.argtypes and (#sysfn.ftype.argtypes == 2 or #sysfn.ftype.argtypes == 3),
+    "the run function should have 2 or 3 arguments:\n" ..
+    "  - the 1st should be the system's record pointer (like the `self` argument when using the method syntax);\n" ..
+    "  - the 2nd should be a record of component pointers to be processed;\n" ..
+    "  - the 3rd should be an entity pointer or a entity concept, this one it's optional."
   )
+
+  local sysfn_uses_3rd_arg = #sysfn.ftype.argtypes == 3
 
   local sysfn_selftype = sysfn.ftype.argtypes[1]
 
@@ -65,9 +72,9 @@ local storage = require 'rotor.storage'
       -- analyze pointer's subtype
       traits.is_type(sysfn_field.type.subtype) and
       sysfn_field.type.subtype.is_record and
-      sysfn_field.type.subtype.is_component,
+      (sysfn_field.type.subtype.is_component or sysfn_field.type.subtype.is_entity),
       -- err msg:
-      "the field '%s' of the second run function argument is neither a type, a record pointer or a component pointer",
+      "the field '%s' of the second run function argument is neither a type, a record pointer, a component pointer or entity pointer",
       sysfn_field.name
       )
   end
@@ -79,55 +86,160 @@ local storage = require 'rotor.storage'
     data: systemdata,
   }
 
+  -- verify if the iterated entity type pass the system's filter at compile time
+  ##[[
+  local function entity_pass_filter(e_type)
+    static_assert(traits.is_type(e_type), 'internal error: e_type is not a type')
+    static_assert(e_type.is_record, 'internal error: e_type is not a record')
+    static_assert(e_type.is_entity, 'internal error: e_type is not an entity')
+
+    local fields_count = 0
+    for _, sysfn_field in ipairs(sysfn_compstype.fields) do
+      for _, e_field in ipairs(e_type.fields) do
+        if e_field.type == sysfn_field.type.subtype then
+          fields_count = fields_count + 1
+        end
+      end
+    end
+
+    return fields_count == #sysfn_compstype.fields
+  end
+  ]]
+
+  -- verify if the entity type contains a entity children, if so, also returns
+  -- the found children fields that passes the system's filter.
+  ##[[
+  local function is_entity_tree(e_type)
+    local is_entity_tree, children_fields = false, {}
+
+    for _, e_field in ipairs(e_type.fields) do
+      if e_field.type.is_entity then
+        is_entity_tree = true
+        table.insert(children_fields, e_field)
+      end
+    end
+
+    return is_entity_tree, children_fields
+  end
+  ]]
+
+  -- verify if this entity contains any child (in any depth) that
+  -- can pass the system filter
+  ##[[
+  local function children_pass_filter(e_type)
+    for _, e_field in ipairs(e_type.fields) do
+      if e_field.type.is_entity then
+        if entity_pass_filter(e_field.type) then
+          return true
+        else
+          return children_pass_filter(e_field.type)
+        end
+      end
+    end
+    return false
+  end
+  ]]
+
   --[[
-  Run the system by passing a variable count of entity storage pointers.
+  This (macro) function collects the required components as references and calls the system
+  In order to run the system for each entity, the component references
+  required by the system are collected, and then, passed as the second argument
+  ]]
+  local function call_system_on_entity(data: systemdata, entity: concepts.an_entity_ptr, EntityType: type)
+    -- TODO: considerar a ordem de chamada da árvore, pode ser pais antes, filhos depois, etc, tornar isso como
+    -- um argumento do construtor `system`
+
+    ## if entity_pass_filter(EntityType.value) then
+      -- variable that stores the collected component references
+      local comps_data: #[sysfn_compstype]# = {}
+
+      -- iterate over the fields of the second argument of the system,
+      -- then iterate over the fields of the entity type and find when both
+      -- fields (from the 2nd arg. and the entity field) matches the type.
+      -- once it happens, the reference it's collected on comps_data.
+      ## for _, sysfn_field in ipairs(sysfn_compstype.fields) do
+        ## for _, e_field in ipairs(EntityType.value.fields) do
+          ## if e_field.type == sysfn_field.type.subtype then
+            comps_data.#|sysfn_field.name|# = &entity.#|e_field.name|#
+          ## end
+        ## end
+      ## end
+
+      -- for safety sake, iterate over all collected fields and check if all fields were
+      -- actually collected, in order to be sure that no UB happens.
+      ## for _, sysfn_field in ipairs(sysfn_compstype.fields) do
+        check(comps_data.#|sysfn_field.name|#, #[sysfn_field.name..' is nilptr!']#)
+      ## end
+
+      -- finally, call the system, passing the components of the iterated entity!
+      ## if sysfn_uses_3rd_arg then
+        sysfn!(data, comps_data, entity)
+      ## else
+        sysfn!(data, comps_data)
+      ## end
+    ## end
+
+    -- run system on children
+    ## local is_entity_tree, children_fields = is_entity_tree(EntityType.value)
+
+    ## for _, e_field in ipairs(children_fields) do
+      call_system_on_entity(data, &entity.#|e_field.name|#, #[e_field.type]#)
+    ## end
+  end
+
+  --[[
+  Run the system by passing a variable count of entity storage pointers or entity pointers.
+
+  When passing an entity pointer, then the system will be called passing the entity components.
 
   Usage:
   ```lua
   -- Run the movement system on all player entities and then all the enemy entities.
   movement_system:run(&players_storage, &enemies_storage)
+
+  -- Run the movement_system on the an specific player entity and then all the enemy entities
+  movement_system:run(&player_entity, &enemies_storage)
   ```
   ]]
   function system:run(...: varargs)
-    ## for i=1, select('#', ...) do
+    ## for i=1, select('#', ...) do -- for each storage pointer passed
       ## local si = select(i, ...)
-      local EStorage: type = @#[si.attr.type.subtype]#
-      local EType: type = @#[EStorage.value.subtype]#
+      ## static_assert(si.attr.type.is_pointer, "The passed #"..i.." argument isn't a pointer, thus not the expected storage or entity reference")
 
-      -- verify if the iterated entity type pass the system's filter at compile time
-      ##[[
-      local fields_count = 0
-      for _, sysfn_field in ipairs(sysfn_compstype.fields) do
-        for _, e_field in ipairs(EType.value.fields) do
-          if e_field.type == sysfn_field.type.subtype then
-            fields_count = fields_count + 1
-          end
-        end
-      end
+      -- the subtype of the i-nth parameter, note that i-nth it's a pointer type
+      local ISubType: type = @#[si.attr.type.subtype]#
+
+      -- Make sure that ISubType it's a storage or an entity, otherwise the types passed on run are wrong.
+      ## static_assert(ISubType.value.is_storage or ISubType.value.is_entity, "The passed #"..i.." argument isn't a storage or entity reference")
+
+      -- Get the actual entity pointer type, be it the storage's subtype or ISubType already.
+      ## if ISubType.value.is_storage then
+      local EntityType: type = @#[ISubType.value.subtype]#
+      ## else
+      local EntityType: type = @#[ISubType.value]#
+      ## end
+
+      ## static_assert(EntityType.value.is_entity, "internal error: EntityType isn't an entity, please report a bug")
+
+      --[[
+      If the entity type or one of it's children (in any level) passes the test,
+      then run the system.
+
+      If the iterated node it's a entity storage, then the system will be called on all
+      entity entries of the storage, but if it's an entity, then it runs the system on the entity.
+
+      Note that the entity might not pass the filter test, but one of it's
+      children may pass (in case the entity type it's a entity tree), on such cases,
+      the system will be called only on the these children (in any depth of the tree).
       ]]
-
-      -- run system on all entities instances of the iterated entity type only
-      -- if it pass the test
-      ## if fields_count == #sysfn_compstype.fields then
-        -- for each entity (ptr) of the iterated entity storage
-        for _, e: pointer(EType) in mpairs(#[si]#) do
-          local comps_data: #[sysfn_compstype]# = {}
-
-          ## for _, sysfn_field in ipairs(sysfn_compstype.fields) do
-            ## for _, e_field in ipairs(EType.value.fields) do
-              ## if e_field.type == sysfn_field.type.subtype then
-                comps_data.#|sysfn_field.name|# = &e.#|e_field.name|#
-              ## end
-            ## end
-          ## end
-
-          -- nilptr safety check
-          ## for _, sysfn_field in ipairs(sysfn_compstype.fields) do
-            check(comps_data.#|sysfn_field.name|#, #[sysfn_field.name..' is nilptr!']#)
-          ## end
-
-          sysfn!(self.data, comps_data)
-        end
+      ## if entity_pass_filter(EntityType.value) or children_pass_filter(EntityType.value) then
+        ## if ISubType.value.is_entity then
+            call_system_on_entity(self.data, #[si]#, EntityType)
+        ## else
+          for _, entity: pointer(EntityType) in mpairs(#[si]#) do
+            call_system_on_entity(self.data, entity, EntityType)
+          end
+        ## end
       ## end
     ## end
   end
