@@ -5,6 +5,9 @@ local GenIdx = @record{
   generation: usize, -- 1-based: 1 is the "first" valid generation, 0 is invalid
 }
 
+-- add `is_genidx` trait
+## GenIdx.value.is_genidx = true
+
 -- Equality test for generational indexes
 --
 -- It compares if the index and the generation of both operands are equal

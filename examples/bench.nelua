@@ -1,5 +1,6 @@
 -- note: requires nene, see: https://github.com/Andre-LA/nene
-require 'nene'
+local Nene = require 'nene'
+local Color = require 'nene.color'
 
 local math = require 'math'
 
