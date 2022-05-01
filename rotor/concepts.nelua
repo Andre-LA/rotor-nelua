@@ -1,0 +1,31 @@
+local Concepts = @record{}
+
+-- simple concepts
+local Concepts.an_entity     = #[concept(function(attr) return attr.type.is_entity end)]#
+local Concepts.an_entity_ptr = #[concept(function(attr) return attr.type.is_pointer and attr.type.subtype.is_entity end)]#
+
+local Concepts.an_genidx     = #[concept(function(attr) return attr.type.is_genidx end)]#
+local Concepts.an_genidx_ptr = #[concept(function(attr) return attr.type.is_pointer and attr.type.subtype.is_genidx end)]#
+
+local Concepts.an_storage     = #[concept(function(attr) return attr.type.is_storage end)]#
+local Concepts.an_storage_ptr = #[concept(function(attr) return attr.type.is_pointer and attr.type.subtype.is_storage end)]#
+
+local Concepts.an_component     = #[concept(function(attr) return attr.type.is_component end)]#
+local Concepts.an_component_ptr = #[concept(function(attr) return attr.type.is_pointer and attr.type.subtype.is_component end)]#
+
+-- advanced
+##[[
+function Concepts.value.an_entity_with(filter)
+  return concept(function(attr)
+    return attr.type.is_entity and attr.type:filter(filter) ~= nil
+  end)
+end
+
+function Concepts.value.an_entity_ptr_with(filter)
+  return concept(function(attr)
+    return attr.type.is_pointer and attr.type.subtype.is_entity and attr.type.subtype:filter(filter) ~= nil
+  end)
+end
+]]
+
+return Concepts
