@@ -1,7 +1,7 @@
 --[[
 Entity generic used to instantiate an entity type in the form of `entity(T)`, where
-`T` must be a record and all it's fields must be components, otherwise it will result
-on a compile-time error.
+`T` must be a record and all it's fields must be either components, entities or generational indexes,
+otherwise it will result on a compile-time error.
 
 Usage:
 
@@ -32,24 +32,195 @@ local my_entity: BasicEntity = {
 -- but it also contains an `is_entity` trait.
 ## static_assert(BasicEntity.value.is_entity)
 ## static_assert(my_entity.type.is_entity)
+
+-- a child entity it's just a field of the parent entity
+local ParentEntity = @entity(@record{
+  position: Position,
+  child: BasicEntity,
+})
+
+local parent: ParentEntity = {
+  position = { 0, 0 },
+  child = {
+    position = { 30, 40 },
+    velocity = { 10, 0 },
+    name = "child entity",
+  }
+}
 ```
 ]]
 
 ## local make_entity = generalize(function(T)
   ##[[
-  static_assert(traits.is_type(T), 'passed value %s is not a type', T)
-  static_assert(T.is_record, 'passed value %s is not a record', T)
+  static_assert(traits.is_type(T), 'passed value %s is not a type; record expected', T)
+  static_assert(T.is_record, "passed value %s it's not a record", T)
+
+  local function is_component_entity_genidx(type)
+    return type.is_component or type.is_entity or type.is_genidx
+  end
 
   for i, field in ipairs(T.fields) do
-    static_assert(field.type.is_component, 'field %s is not a component', field)
+    static_assert(
+      is_component_entity_genidx(field.type),
+      'field %s is neither a component, entity or generational index',
+      field
+    )
   end
   ]]
 
-  local entityT: type = @#[T]#
-  ## entityT.value.is_entity = true
+  local entity: type = @#[T]#
+  ## entity.value.is_entity = true
 
-  ## return entityT
+  ##[[
+  --[=[
+  Preprocessor function, it returns a table with all the fields of a certain type.
+
+  Usage:
+  ```lua
+  local entity = require 'rotor.entity'
+  local component = require 'rotor.component'
+
+  local Position = @component(record{ x: number, y: number })
+  local Velocity = @component(record{ x: number, y: number })
+
+  local Character = @entity(@record{
+    position: Position,
+    velocity: Velocity
+  })
+
+  ## local pos_field = Character.value:find_fields_of_type(Position.value)[1]
+  ## print( require'inspect' (pos_field, {depth=1}) )
+
+  -- output: {
+  --   index = 1,
+  --   name = "position",
+  --   offset = 0,
+  --   type = {...}
+  -- }
+  ```
+  ]=]
+  function entity.value:find_fields_of_type(type)
+    local fields = {}
+    for _, field in ipairs(self.fields) do
+      if field.type == type then
+        table.insert(fields, field)
+      end
+    end
+    return fields
+  end
+
+  --[=[
+  Preprocessor function, it receives `filter`, which must be a table of types (whose should be
+  components, entities or generational indexes), then it will search for fields that have all
+  of the passed types as fields.
+
+  If no fields with all the required types are found, this functions retuns `nil`, however, if
+  one or more fields are found, then it will return a table of these fields.
+
+  Usage:
+  ```lua
+  local entity = require 'rotor.entity'
+  local component = require 'rotor.component'
+
+  local Position = @component(record{ x: number, y: number })
+  local Velocity = @component(record{ x: number, y: number })
+
+  local Character = @entity(@record{
+    position: Position,
+    velocity: Velocity
+  })
+
+  ## local character_fields = Character.value:filter({Position.value, Velocity.value})
+  ## print( require'inspect' (character_fields, {depth=2}) )
+
+
+  -- output: {
+  --   <1>{
+  --     index = 1,
+  --     name = "position",
+  --     offset = 0,
+  --     type = {...}
+  --   },
+  --   <2>{
+  --     index = 2,
+  --     name = "velocity",
+  --     offset = 16,
+  --     type = {...}
+  --   }
+  -- }
+  ```
+  ]=]
+  function entity.value:filter(filter)
+    local fields = {}
+    for i = 1, #filter do
+      static_assert(
+        is_component_entity_genidx(filter[i]),
+        '#'..i..' entry of filter is not a component, entity or generational index'
+      )
+
+      local field = self:find_fields_of_type(filter[i])[1]
+      if not field then
+        return nil
+      else
+        table.insert(fields, field)
+      end
+    end
+    return fields
+  end
+
+  --[=[
+  Preprocessor function, it returns a table of fields of children entities of the entity, you
+  can also optionally pass a `filter` argument (see `entity.value.filter` function above).
+
+  When the filter it's given, only children fields that passes the filter are included on
+  the returned table, but when the filter isnt' given, then just all the children entities
+  are included.
+
+  Usage:
+  ```lua
+  local entity = require 'rotor.entity'
+  local component = require 'rotor.component'
+
+  local Person = @component(record{ name: string, age: byte })
+  local Position = @component(record{ x: number, y: number })
+  local Velocity = @component(record{ x: number, y: number })
+
+  local Character = @entity(@record{
+    position: Position,
+    person: Person,
+  })
+
+  local Mecha = @entity(@record{
+    position: Position,
+    velocity: Velocity,
+    pilot: Character,
+  })
+
+  ## local mecha_pilot_field = Mecha.value:find_children_fields({Position.value, Person.value})[1]
+  ## print( require'inspect' (mecha_pilot_field, {depth=1}) )
+
+  -- output: {
+  --   index = 3,
+  --   name = "pilot",
+  --   offset = 32,
+  --   type = {...}
+  -- }
+  ```
+  ]=]
+  function entity.value:find_children_fields(filter)
+    local fields = {}
+    for _, field in ipairs(self.fields) do
+      if field.type.is_entity and (not filter or field.type:filter(filter)) then
+        table.insert(fields, field)
+      end
+    end
+    return fields
+  end
+  ]]
+
+  ## return entity
 ## end)
 
 local entity: type = #[make_entity]#
+
 return entity
