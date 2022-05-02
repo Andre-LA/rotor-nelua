@@ -1,14 +1,26 @@
 --[[
 The system module.
 
-System generic used to instantiate an system runtime type in the form of `system(T)`, where:
+System generic used to instantiate an system runtime type in the form of `system(T, order, is_reversed)`, where:
 * `T` is an "run" function (it doesn't need to be named as "run")
-* the "run" function should have 2 or 3 parameters:
-  - the 1st should be the system's record pointer (the `self` parameter when using the method syntax)
-  - the 2nd should be a record of either component or entity pointers to be processed.
-  - the 3rd parameter it's optional, if given, it should be an entity parameter or an entity concept.
+  - the "run" function should have 2 or 3 parameters:
+    * the 1st should be the system's record pointer (the `self` parameter when using the method syntax)
+    * the 2nd should be a record of either component or entity pointers to be processed.
+    * the 3rd parameter it's optional, if given, it should be an entity parameter or an entity concept.
+* order it's an optional argument, where it must be either "pre-order" or "post-order"; if not given the "pre-order" value it's used.
+* is_reversed it's an optional argument, it sets the order of children passed to systems.
 
 Any no satisfied condition should result in a compile-time error.
+
+About the order and is_reversed argument:
+
+This option it's only useful when dealing with entity trees, when the value it's "pre-order", the system will first run
+on the parent entities and then on the children entities, however when the value it's "post-order", then it will
+run on children first and then on parents.
+
+is_reversed reverses the children order on system calls, the order itself it's the order of entity fields on the entity record.
+
+(See more about here: https://en.wikipedia.org/wiki/Tree_traversal#Depth-first_search)
 
 Usage:
 ```lua
@@ -36,8 +48,10 @@ require 'iterators'
 local storage = require 'rotor.storage'
 local concepts = require 'rotor.concepts'
 
-## local make_system = generalize(function(sysfn)
+## local make_system = generalize(function(sysfn, order, is_reversed)
   ##[[
+  local order = order or 'pre-order'
+
   static_assert(
     sysfn.ftype.argtypes and (#sysfn.ftype.argtypes == 2 or #sysfn.ftype.argtypes == 3),
     "the run function should have 2 or 3 arguments:\n" ..
@@ -45,6 +59,9 @@ local concepts = require 'rotor.concepts'
     "  - the 2nd should be a record of component pointers to be processed;\n" ..
     "  - the 3rd should be an entity pointer or a entity concept, this one it's optional."
   )
+
+  static_assert(order == 'pre-order' or order == 'post-order', 'Invalid order, it should be "pre-order" or "post-order"')
+  static_assert(type(is_reversed) == 'boolean' or type(is_reversed) == 'nil', 'Invalid is_reversed, it should be true, false or nil')
 
   local sysfn_uses_3rd_arg = #sysfn.ftype.argtypes == 3
 
@@ -146,45 +163,56 @@ local concepts = require 'rotor.concepts'
   required by the system are collected, and then, passed as the second argument
   ]]
   local function call_system_on_entity(data: systemdata, entity: concepts.an_entity_ptr, EntityType: type)
-    -- TODO: considerar a ordem de chamada da árvore, pode ser pais antes, filhos depois, etc, tornar isso como
-    -- um argumento do construtor `system`
+    ## local function run_system_on_entity()
+      ## if entity_pass_filter(EntityType.value) then
+        -- variable that stores the collected component references
+        local comps_data: #[sysfn_compstype]# = {}
 
-    ## if entity_pass_filter(EntityType.value) then
-      -- variable that stores the collected component references
-      local comps_data: #[sysfn_compstype]# = {}
-
-      -- iterate over the fields of the second argument of the system,
-      -- then iterate over the fields of the entity type and find when both
-      -- fields (from the 2nd arg. and the entity field) matches the type.
-      -- once it happens, the reference it's collected on comps_data.
-      ## for _, sysfn_field in ipairs(sysfn_compstype.fields) do
-        ## for _, e_field in ipairs(EntityType.value.fields) do
-          ## if e_field.type == sysfn_field.type.subtype then
-            comps_data.#|sysfn_field.name|# = &entity.#|e_field.name|#
+        -- iterate over the fields of the second argument of the system,
+        -- then iterate over the fields of the entity type and find when both
+        -- fields (from the 2nd arg. and the entity field) matches the type.
+        -- once it happens, the reference it's collected on comps_data.
+        ## for _, sysfn_field in ipairs(sysfn_compstype.fields) do
+          ## for _, e_field in ipairs(EntityType.value.fields) do
+            ## if e_field.type == sysfn_field.type.subtype then
+              comps_data.#|sysfn_field.name|# = &entity.#|e_field.name|#
+            ## end
           ## end
         ## end
-      ## end
 
-      -- for safety sake, iterate over all collected fields and check if all fields were
-      -- actually collected, in order to be sure that no UB happens.
-      ## for _, sysfn_field in ipairs(sysfn_compstype.fields) do
-        check(comps_data.#|sysfn_field.name|#, #[sysfn_field.name..' is nilptr!']#)
-      ## end
+        -- for safety sake, iterate over all collected fields and check if all fields were
+        -- actually collected, in order to be sure that no UB happens.
+        ## for _, sysfn_field in ipairs(sysfn_compstype.fields) do
+          check(comps_data.#|sysfn_field.name|#, #[sysfn_field.name..' is nilptr!']#)
+        ## end
 
-      -- finally, call the system, passing the components of the iterated entity!
-      ## if sysfn_uses_3rd_arg then
-        sysfn!(data, comps_data, entity)
-      ## else
-        sysfn!(data, comps_data)
+        -- finally, call the system, passing the components of the iterated entity!
+        ## if sysfn_uses_3rd_arg then
+          sysfn!(data, comps_data, entity)
+        ## else
+          sysfn!(data, comps_data)
+        ## end
       ## end
     ## end
 
-    -- run system on children
-    ## local is_entity_tree, children_fields = is_entity_tree(EntityType.value)
+    ## local function run_system_on_children()
+      ## local is_entity_tree, children_fields = is_entity_tree(EntityType.value)
 
-    ## for _, e_field in ipairs(children_fields) do
-      call_system_on_entity(data, &entity.#|e_field.name|#, #[e_field.type]#)
+      ## for i = (is_reversed and #children_fields or 1), (is_reversed and 1 or #children_fields), (is_reversed and -1 or 1) do
+        ## local e_field = children_fields[i]
+        call_system_on_entity(data, &entity.#|e_field.name|#, #[e_field.type]#)
+      ## end
     ## end
+
+    ##[[
+    if order == 'pre-order' then
+      run_system_on_entity()
+      run_system_on_children()
+    elseif order == 'post-order' then
+      run_system_on_children()
+      run_system_on_entity()
+    end
+    ]]
   end
 
   --[[
