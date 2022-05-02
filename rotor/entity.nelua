@@ -68,8 +68,8 @@ local parent: ParentEntity = {
   end
   ]]
 
-  local entity: type = @#[T]#
-  ## entity.value.is_entity = true
+  local entityT: type = @#[T]#
+  ## entityT.value.is_entity = true
 
   ##[[
   --[=[
@@ -99,7 +99,7 @@ local parent: ParentEntity = {
   -- }
   ```
   ]=]
-  function entity.value:find_fields_of_type(type)
+  function entityT.value:find_fields_of_type(type)
     local fields = {}
     for _, field in ipairs(self.fields) do
       if field.type == type then
@@ -150,7 +150,7 @@ local parent: ParentEntity = {
   -- }
   ```
   ]=]
-  function entity.value:filter(filter)
+  function entityT.value:filter(filter)
     local fields = {}
     for i = 1, #filter do
       static_assert(
@@ -207,7 +207,7 @@ local parent: ParentEntity = {
   -- }
   ```
   ]=]
-  function entity.value:find_children_fields(filter)
+  function entityT.value:find_children_fields(filter)
     local fields = {}
     for _, field in ipairs(self.fields) do
       if field.type.is_entity and (not filter or field.type:filter(filter)) then
@@ -218,7 +218,7 @@ local parent: ParentEntity = {
   end
   ]]
 
-  ## return entity
+  ## return entityT
 ## end)
 
 local entity: type = #[make_entity]#

@@ -4,8 +4,8 @@
 ## entity
 
 Entity generic used to instantiate an entity type in the form of `entity(T)`, where
-`T` must be a record and all it's fields must be components, otherwise it will result
-on a compile-time error.
+`T` must be a record and all it's fields must be either components, entities or generational indexes,
+otherwise it will result on a compile-time error.
 
 Usage:
 
@@ -36,6 +36,21 @@ local my_entity: BasicEntity = {
 -- but it also contains an `is_entity` trait.
 ## static_assert(BasicEntity.value.is_entity)
 ## static_assert(my_entity.type.is_entity)
+
+-- a child entity it's just a field of the parent entity
+local ParentEntity = @entity(@record{
+  position: Position,
+  child: BasicEntity,
+})
+
+local parent: ParentEntity = {
+  position = { 0, 0 },
+  child = {
+    position = { 30, 40 },
+    velocity = { 10, 0 },
+    name = "child entity",
+  }
+}
 ```
 
 ### entity
