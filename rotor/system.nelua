@@ -145,12 +145,8 @@ local concepts = require 'rotor.concepts'
   ##[[
   local function children_pass_filter(e_type)
     for _, e_field in ipairs(e_type.fields) do
-      if e_field.type.is_entity then
-        if entity_pass_filter(e_field.type) then
-          return true
-        else
-          return children_pass_filter(e_field.type)
-        end
+      if e_field.type.is_entity and (entity_pass_filter(e_field.type) or children_pass_filter(e_field.type)) then
+        return true
       end
     end
     return false
@@ -162,7 +158,7 @@ local concepts = require 'rotor.concepts'
   In order to run the system for each entity, the component references
   required by the system are collected, and then, passed as the second argument
   ]]
-  local function call_system_on_entity(data: systemdata, entity: concepts.an_entity_ptr, EntityType: type)
+  local function call_system_on_entity(data: *systemdata, entity: concepts.an_entity_ptr, EntityType: type)
     ## local function run_system_on_entity()
       ## if entity_pass_filter(EntityType.value) then
         -- variable that stores the collected component references
@@ -247,7 +243,7 @@ local concepts = require 'rotor.concepts'
       local EntityType: type = @#[ISubType.value]#
       ## end
 
-      ## static_assert(EntityType.value.is_entity, "internal error: EntityType isn't an entity, please report a bug")
+      ## static_assert(EntityType.value.is_entity, "error: EntityType isn't an entity, this is a bug, please report it")
 
       --[[
       If the entity type or one of it's children (in any level) passes the test,
@@ -260,6 +256,7 @@ local concepts = require 'rotor.concepts'
       children may pass (in case the entity type it's a entity tree), on such cases,
       the system will be called only on the these children (in any depth of the tree).
       ]]
+
       ## if entity_pass_filter(EntityType.value) or children_pass_filter(EntityType.value) then
         ## if ISubType.value.is_entity then
             call_system_on_entity(self.data, #[si]#, EntityType)
