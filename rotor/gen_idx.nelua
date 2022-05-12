@@ -1,3 +1,8 @@
+-- Generational Index module
+
+-- Copyright (c) 2019-2022 André Luiz Alvares
+-- SPDX-License-Identifier: MIT
+
 -- Generational Indexes, it identifies an index with a generation, making
 -- each index unique between re-uses.
 local GenIdx = @record{

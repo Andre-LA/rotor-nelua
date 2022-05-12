@@ -29,6 +29,9 @@ end
 ```
 ]]
 
+-- Copyright (c) 2019-2022 André Luiz Alvares
+-- SPDX-License-Identifier: MIT
+
 local Concepts = @record{}
 
 local Concepts.an_entity     = #[concept(function(attr) return attr.type.is_entity end)]#

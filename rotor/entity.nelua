@@ -50,6 +50,9 @@ local parent: ParentEntity = {
 ```
 ]]
 
+-- Copyright (c) 2019-2022 André Luiz Alvares
+-- SPDX-License-Identifier: MIT
+
 ## local make_entity = generalize(function(T)
   ##[[
   static_assert(traits.is_type(T), 'passed value %s is not a type; record expected', T)

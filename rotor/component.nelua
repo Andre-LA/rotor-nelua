@@ -24,6 +24,9 @@ local position: Position = { pos = { x = 10, y = 20 } }
 ```
 ]]
 
+-- Copyright (c) 2019-2022 André Luiz Alvares
+-- SPDX-License-Identifier: MIT
+
 ## local make_component = generalize(function(T)
   ##[[
   static_assert(traits.is_type(T), 'passed value %s is not a type', T)
