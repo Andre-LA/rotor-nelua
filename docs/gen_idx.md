@@ -4,8 +4,7 @@
 
 ## gen_idx
 
-Generational Indexes, it identifies an index with a generation, making
-each index unique between re-uses.
+Generational Index module
 
 ### GenIdx
 
