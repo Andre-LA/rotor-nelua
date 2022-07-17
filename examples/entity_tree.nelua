@@ -1,9 +1,13 @@
 --[[
-This example simulates a simple unrealistic solar system,
+This example simulates a simple (unrealistic) solar system,
 this code it's just to showcase how an entity tree can be made in Rotor.
 
 Note: you will need nene in order to run this example: https://github.com/Andre-LA/nene/
+      run with `nelua examples/entity_tree -L path/to/nene`
 ]]
+
+-- Copyright (c) 2019-2022 André Luiz Alvares
+-- SPDX-License-Identifier: MIT
 
 -- nelua
 local math = require 'math'

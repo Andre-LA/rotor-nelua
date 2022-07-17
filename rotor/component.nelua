@@ -16,7 +16,9 @@ local Position = @component(@record{
 })
 
 -- Position's type it's the record passed on the component constructor.
-local position: Position = { pos = { x = 10, y = 20 } }
+local position: Position = {
+  pos = { 10, 20 }
+}
 
 -- but it also contains an `is_component` trait.
 ## static_assert(Position.value.is_component)
@@ -27,17 +29,14 @@ local position: Position = { pos = { x = 10, y = 20 } }
 -- Copyright (c) 2019-2022 André Luiz Alvares
 -- SPDX-License-Identifier: MIT
 
-## local make_component = generalize(function(T)
-  ##[[
+##[[
+local make_component = generalize(function(T)
   static_assert(traits.is_type(T), 'passed value %s is not a type', T)
   static_assert(T.is_record, 'passed value %s is not a record', T)
-  ]]
-
-  local componentT: type = @#[T]#
-  ## componentT.value.is_component = true
-
-  ## return componentT
-## end)
+  T.is_component = true
+  return T
+end)
+]]
 
 local component: type = #[make_component]#
 return component

@@ -1,3 +1,9 @@
+-- Basic example
+-- This code shows the basic usage of rotor on a full ECS usage.
+
+-- Copyright (c) 2019-2022 André Luiz Alvares
+-- SPDX-License-Identifier: MIT
+
 local math = require 'math'
 local os   = require 'os'
 local io   = require 'io'
@@ -8,54 +14,126 @@ local entity    = require 'rotor.entity'
 local system    = require 'rotor.system'
 
 -- components --
-local Position = @component(@record{ x: integer, y: integer })
-local Velocity = @component(@record{ x: integer, y: integer })
-local Name     = @component(@record{ data: string })
 
+--[[
+Components are our entities data, if we have an "person" entity with position
+and a name, then it could have the "Position" and "Name" components.
+
+Components are declared by using the `component` generic, passing a record
+of the data it will store.
+
+Notes:
+- Prefer using `nickname` annotations to improve debuggability.
+- Always pass a new record, don't reuse records like `local Position = @component(@vec2)`.
+]]
+local Position <nickname 'Position'> = @component(@record{ x: integer, y: integer })
+local Velocity <nickname 'Velocity'> = @component(@record{ x: integer, y: integer })
+local Name <nickname 'Name'>         = @component(@record{ data: string })
+
+-- systems --
+
+--[[
+To make a system, first declare a record which will be the "system data", this
+can be used in order to share data between system runs if necessary.
+
+Later, declare the "Filter", which is a record of components pointers, only
+the entities that have these components will be processed by the system.
+
+Finally, the "run" **method**, you can use any name you prefer, and even
+creating multiple (using different filters).
+
+To actually process this systems with our entities, we need to create the
+system runtime and call it, but this will be explained later.
+]]
+
+-- movement system
+local MovementSystem = @record{}
+local MovementSystem.Filter = @record{vel: *Velocity, pos: *Position}
+
+function MovementSystem:run(c: MovementSystem.Filter)
+  c.pos.x = c.pos.x + c.vel.x
+  c.pos.y = c.pos.y + c.vel.y
+end
+
+-- rightmost system
 local Rightmost = @record{
   pos: Position,
   name: Name
 }
 
--- systems --
-local MovementSystem = @record{}
-
-function MovementSystem:run(c: record{vel: *Velocity, pos: *Position})
-  c.pos.x = c.pos.x + c.vel.x
-  c.pos.y = c.pos.y + c.vel.y
-end
-
 local RightmostSystem = @record{
   rightmost: Rightmost,
 }
+local RightmostSystem.Filter = @record{pos: *Position, name: *Name}
 
 function RightmostSystem:init()
   self.rightmost.pos.x = math.mininteger
 end
 
-function RightmostSystem:run(c: record{pos: *Position, name: *Name})
+function RightmostSystem:run(c: RightmostSystem.Filter)
+  -- note how RightmostSystem uses the system data to share data between runs
   if c.pos.x > self.rightmost.pos.x then
     self.rightmost.pos = $c.pos
     self.rightmost.name = $c.name
   end
 end
 
+--[[
+System runtimes are decalred with the `system` generic and passing the
+`run` method.
+
+The system generic uses meta-programming heavily to make the runtime type,
+for instance, it inspects the "run" method parameters (including `self`) in
+order to create a type with specialized functions that process entities
+storages with the system data (the `self` parameter of the "run" function).
+
+The usage of system runtimes to process entities will be shown later.
+]]
 local Systems = @record{
   movement_system: system(MovementSystem.run),
   rightmost_system: system(RightmostSystem.run),
 }
+local systems: Systems
 
 -- entity --
+
+--[[
+Entities (also called Game Objects by some engines) are the "objects" of the
+game (not in the programming perspective of OOP, but in game perspective).
+
+On the game-design perspective, characters, scenary, points of reference,
+anything on a scene, are entities.
+
+For example, if we had scene with a person, a table and a chair, then it
+would be a scene made made of three entities: person, table and chair.
+
+On the technical perspective, an entity it's an entry of a set of associated
+components that will be processed by a system, thus giving it behavior.
+
+In memory, entities "live" on storages, if we want to spawn an entity on the
+scene, then the entity would need to be pushed to a storage and the systems
+of this scene should process the entities of this storage.
+
+Finally, entities are declared with the `entity` generic, passing a record
+whose defines which components* this entity will have.
+
+Entity storages are declared by the `storage` generic with two arguments:
+the entity type, and the maximum capacity of concurrent entitities.
+
+*actually you can also use an entity type in order to make a nested entity,
+thus making an entity tree, see the `entity_tree` example for that.
+]]
 local BasicEntity = @entity(@record{
   position: Position,
   velocity: Velocity,
   name: Name,
 })
+local BasicEntity.storage: storage(BasicEntity, 64)
 
--- setup --
-local entity_storage: storage(BasicEntity, 64)
-local systems: Systems
+-- Finally, our main code --
 
+-- initialize rightmost_system's data, note that rightmost_system's type
+-- it's not on RightmostSystem, our data it's on the `data` field.
 systems.rightmost_system.data:init()
 
 -- let's create 64 entities!
@@ -64,26 +142,73 @@ print 'creating!'
 for i = 0, < 64 do
   math.randomseed(os.time())
 
-  -- create a new entity with an position, velocity and name
-  local ok, id, entity = entity_storage:push({
+  -- create a new entity with an position, velocity and name, since BasicEntity
+  -- it's just a record, there is nothing really special about initializing it.
+  local new_entity: BasicEntity = {
     position = { x = math.random(-100, 100), y = i },
     velocity = { x = math.random(-200, 200), y = 0 },
     name = { 'some entity' },
-  })
-  assert(ok)
-  assert(entity.name.data == 'some entity')
+  }
+
+  --[[
+  however, it's still just a local variable, in order to "spawn" it, or more
+  specifically, being where entities "live", we need to push it to it's storage.
+
+  `push` returns three values: an ok status, an id, and an entity pointer.
+
+  - the `ok` status it's `true` when the entity was actually pushed to storage,
+    you should verify this because storages have a maximum capacity, if there is
+    no available slot on the storage, then the `ok` status will be `false`.
+
+  - the `id` it's the generational index relative to _where_ the entity was
+    inserted (generational indexes are like regular indexes of arrays, but
+    with an extra generation field which identifies reuses of the index,
+    this avoids conflicts of slots reuses).
+
+  - the `entity` it's just an *BasicEntity variable, a direct reference to the
+    inserted entity, it's useful if you need to override data later, but you
+    should not use this pointer after this function, use the `id` instead.
+  ]]
+  local ok, id, entity = BasicEntity.storage:push(new_entity)
+
+  -- always check if the entity was actually inserted, `assert` it's not the
+  -- only strategy about this.
+  assert(ok, "the entity couldn't be pushed to storage")
 end
 
 -- running --
+--[[
+To process the entities on the systems, just call the `run` function of the
+**runtime** passing all the entity storage references to be procesed, note that
+this is not the "run" methods of the systems.
+
+When you call the `run` method of the runtime, it will, for each
+storage reference you pass, check if the entities of such storage passes the
+filter (that is, if the entity type has all the required components), if it
+doesn't the storage it's ignored, this all happens at compile time, there is
+no run-time cost on these checks.
+
+If the entity type of the storage passes the filter, then it iterates over
+all entities of the storage and pass the components of each entity on the
+"run" method of the system data.
+]]
+
 -- let's execute movement system 10 times
 for _ = 1, 10 do
   print ('executing movement system')
-  systems.movement_system:run(&entity_storage)
+  systems.movement_system:run(&BasicEntity.storage)
 end
 
+-- execeute the rightmost system
 print ('executing rightmost system')
-systems.rightmost_system:run(&entity_storage)
+systems.rightmost_system:run(&BasicEntity.storage)
 
+-- copy the rightmost from the rightmost_system's data.
 local rightmost = systems.rightmost_system.data.rightmost
 
+-- print the results
 io.printf("entity '%s' is in the rightmost position.x: %d\n", rightmost.name.data, rightmost.pos.x)
+
+-- This cover the basics of rotor! Now check the other examples to see a more
+-- advanced usage of it!
+

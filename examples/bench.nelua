@@ -1,4 +1,14 @@
--- note: requires nene, see: https://github.com/Andre-LA/nene
+--[[
+A Simple benchmark that tests rotor's performance,
+inspired by love-ecs-benchmarks: https://github.com/Keyslam/love-ecs-benchmarks
+
+Note: you will need nene in order to run this example: https://github.com/Andre-LA/nene/
+      run with `nelua examples/entity_tree -L path/to/nene`
+]]
+
+-- Copyright (c) 2019-2022 André Luiz Alvares
+-- SPDX-License-Identifier: MIT
+
 local Nene = require 'nene'
 local Color = require 'nene.color'
 
