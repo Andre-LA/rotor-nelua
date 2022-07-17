@@ -1,0 +1,86 @@
+--[[
+The Utils module.
+
+This module have some useful utility functions.
+]]
+
+-- Copyright (c) 2019-2022 André Luiz Alvares
+-- SPDX-License-Identifier: MIT
+
+-- The util module
+
+local concepts = require 'rotor.concepts'
+
+local utils = @record{}
+
+## local function ExtendedEntity_macrodecl()
+local ExtendedEntity = @record{}
+## end
+
+-- returns if the type it's accepted to be on an entity field.
+##[[
+function utils.value.valid_entity_field_type(type)
+  return type.is_component or type.is_entity or type.is_genidx
+end
+
+function utils.value.assert_entity_field(field)
+  static_assert(
+    utils.value.valid_entity_field_type(field.type),
+    'field %s is neither a component, entity or generational index',
+    field.name
+  )
+end
+
+function utils.value.assert_record_for_entity(type)
+  static_assert(traits.is_type(type), 'passed value %s is not a type; record expected', type)
+  static_assert(type.is_record, "passed value %s it's not a record", type)
+
+  for i, field in ipairs(type.fields) do
+    utils.value.assert_entity_field(field)
+  end
+end
+]]
+
+--[[
+Returns a new entity type that copies the same fields of the passed `e_type`, plus the `extra`
+components, note that only the record it's "cloned", not the methods.
+
+This is a preprocessor function.
+]]
+##[[
+function utils.value.extend_entity(base_entity, extra_components)
+  static_assert(base_entity.value.is_entity, 'The passed base_entity is not an entity type')
+
+  for fieldname, type in pairs(extra_components) do
+    utils.value.assert_entity_field({ name = fieldname, type = type.value })
+  end
+
+  ExtendedEntity_macrodecl()
+
+  for _, field in ipairs(base_entity.value.fields) do
+    ExtendedEntity.value:add_field(field.name, field.type)
+  end
+  for fieldname, type in pairs(extra_components) do
+    ExtendedEntity.value:add_field(fieldname, type.value)
+  end
+
+  return ExtendedEntity
+end
+]]
+
+-- TODO: adicionar opções de filtragem
+function utils.copy_entity(another_entity: concepts.an_entity_ptr, new_entity_type: type): #[new_entity_type.value]#
+  local new_entity: new_entity_type
+
+  ## for _, ne_field in ipairs(new_entity_type.value.fields) do
+    ## for _, ae_field in ipairs(another_entity.type.subtype.fields) do
+      ## if ne_field.type == ae_field.type then
+        new_entity.#|ne_field.name|# = another_entity.#|ae_field.name|#
+      ## end
+    ## end
+  ## end
+
+  return new_entity
+end
+
+return utils

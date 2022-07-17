@@ -1,0 +1,122 @@
+--[[
+Extending entities
+
+Note: Be sure to check `override` example first.
+
+Extending an entity it's essentially using an utility function to create
+a **new** entity type that copies the same components from another entity,
+and _extending_ it with more components.
+
+It's pretty useful when a entity type it's a superset of another more
+basic entity type.
+
+Note that only the record's fields are copied, not the methods, thus for
+reusable methods, eitger declare them on components directly; use local
+functions that receives the components on arguments; or just use traits
+to make polymorphic functions.
+
+This is inspired from "variant prefabs" on other engines.
+]]
+
+-- Copyright (c) 2019-2022 André Luiz Alvares
+-- SPDX-License-Identifier: MIT
+
+local io = require 'io'
+local entity = require 'rotor.entity'
+local component = require 'rotor.component'
+local utils = require 'rotor.utils'
+
+local Class = @enum{
+  Person = 0,
+  Wizard,
+  Warrior,
+}
+
+function Class.__tostring(self: Class): string
+  switch self do
+    case Class.Wizard  then return 'Wizard'
+    case Class.Warrior then return 'Warrior'
+    else return 'Person'
+  end
+end
+
+-- Note: Prefer using nicknames to improve debuggability, otherwise it
+--       would be just "componentT".
+local PersonController <nickname 'PersonController'> = @component(@record{
+  name: string,
+  class: Class,
+  hp: integer,
+})
+
+-- Note: Prefer to use methods on the components instead on on the entities,
+--       this way you make the code reusable on extended entity types.
+function PersonController:introduce_yourself()
+  io.printf("I'm the %s %s\n", tostring(self.class), self.name)
+end
+
+local Person <nickname 'Person'> = @entity(@record{
+  person_controller: PersonController,
+})
+
+function Person.init(name: string, class: Class): Person
+  local person: Person = {
+    person_controller = {
+      =name,
+      =class
+    }
+  }
+  return person
+end
+
+-- warrior
+local WarriorController <nickname 'WarriorController'> = @component(@record{
+  atk: integer
+})
+
+local Warrior <nickname'Warrior'> = @#[utils.value.extend_entity(Person, {
+  warrior_controller = WarriorController,
+})]#
+
+function Warrior.init(name: string): Warrior
+  local person = Person.init(name, Class.Warrior)
+
+  local warrior = utils.copy_entity(&person, @Warrior)
+  warrior.warrior_controller.atk = 100
+
+  return warrior
+end
+
+-- wizard
+local WizardController <nickname 'WizardController'> = @component(@record{
+  mp: integer
+})
+
+local Wizard <nickname 'Wizard'> = @#[utils.value.extend_entity(Person, {
+  wizard_controller = WizardController,
+})]#
+
+function Wizard.init(name: string): Wizard
+  local person = Person.init(name, Class.Wizard)
+
+  local wizard = utils.copy_entity(&person, @Wizard)
+  wizard.wizard_controller.mp = 120
+
+  return wizard
+end
+
+local John = @record{}
+
+function John.init(): Warrior
+  return Warrior.init('John')
+end
+
+local Maria = @record{}
+
+function Maria.init(): Wizard
+  return Wizard.init('Maria')
+end
+
+local john, maria = John.init(), Maria.init()
+john.person_controller:introduce_yourself()
+maria.person_controller:introduce_yourself()
+

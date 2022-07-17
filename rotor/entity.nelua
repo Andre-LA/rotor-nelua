@@ -53,23 +53,11 @@ local parent: ParentEntity = {
 -- Copyright (c) 2019-2022 André Luiz Alvares
 -- SPDX-License-Identifier: MIT
 
+local utils = require 'rotor.utils'
+## local utils = utils
+
 ## local make_entity = generalize(function(T)
-  ##[[
-  static_assert(traits.is_type(T), 'passed value %s is not a type; record expected', T)
-  static_assert(T.is_record, "passed value %s it's not a record", T)
-
-  local function is_component_entity_genidx(type)
-    return type.is_component or type.is_entity or type.is_genidx
-  end
-
-  for i, field in ipairs(T.fields) do
-    static_assert(
-      is_component_entity_genidx(field.type),
-      'field %s is neither a component, entity or generational index',
-      field
-    )
-  end
-  ]]
+  ## utils.value.assert_record_for_entity(T)
 
   local entityT: type = @#[T]#
   ## entityT.value.is_entity = true
@@ -157,7 +145,7 @@ local parent: ParentEntity = {
     local fields = {}
     for i = 1, #filter do
       static_assert(
-        is_component_entity_genidx(filter[i]),
+        utils.value.valid_entity_field_type(filter[i]),
         '#'..i..' entry of filter is not a component, entity or generational index'
       )
 

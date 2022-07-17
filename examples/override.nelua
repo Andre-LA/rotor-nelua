@@ -1,0 +1,103 @@
+--[[
+Overriding entities
+
+Entity overriding it's useful to avoid code duplication when making
+different kinds of entities where these entities are just the same
+entity type with different settings on it's data.
+
+For example, a soccer ball and a basket ball entities can be of the same
+`Ball` type, it's just it's data that's different.
+
+Technically there's nothing really special about them, you only need to
+initialize the base and then override the data.
+
+However, if you need to actually make a new type, and even extend it, then
+you probably need to extend the base entity type on a new type, for this,
+see the `extend` example.
+]]
+
+-- Copyright (c) 2019-2022 André Luiz Alvares
+-- SPDX-License-Identifier: MIT
+
+local io = require 'io'
+local entity = require 'rotor.entity'
+local component = require 'rotor.component'
+
+local Class = @enum{
+  Person = 0,
+  Wizard,
+  Warrior,
+}
+
+function Class.__tostring(self: Class): string
+  switch self do
+    case Class.Wizard  then return 'Wizard'
+    case Class.Warrior then return 'Warrior'
+    else return 'Person'
+  end
+end
+
+local PersonController = @component(@record{
+  name: string,
+  class: Class,
+})
+
+-- Note: Prefer to use methods on the components, not on the entity.
+function PersonController:introduce_yourself()
+  io.printf("I'm the %s %s.\n", tostring(self.class), self.name)
+end
+
+-- base entity
+local Person = @entity(@record{
+  person_controller: PersonController,
+})
+
+function Person.init(name: string, class: Class): Person
+  local person: Person = {
+    person_controller = {
+      =name,
+      =class
+    }
+  }
+  return person
+end
+
+-- wizard module, creates an "wizard person"
+local Wizard = @record{}
+
+function Wizard.init(name: string): Person
+  return Person.init(name, Class.Wizard)
+end
+
+-- warrior module, creates an "warrior person"
+local Warrior = @record{}
+
+function Warrior.init(name: string): Person
+  return Person.init(name, Class.Warrior)
+end
+
+-- "john" module, creates the "John" character, who is a warrior
+local John = @record{}
+
+function John.init(): Person
+  return Warrior.init('John')
+end
+
+-- "maria" module, creates the "Maria" character, who is a wizard
+local Maria = @record{}
+
+function Maria.init(): Person
+  return Wizard.init('Maria')
+end
+
+-- main code, here we just initializes John and Maria characters, note
+-- how we don't need to pass any specific setting, everything is done
+-- on the `init` function for us.
+local john, maria = John.init(), Maria.init()
+
+john.person_controller:introduce_yourself()
+maria.person_controller:introduce_yourself()
+
+-- If we decided to change what a Person is, or change John's or Maria's
+-- classes, no refactor would be needed on the main code, just like
+-- prefabs/prototypes on other engines.
