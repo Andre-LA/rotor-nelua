@@ -9,10 +9,8 @@ Usage:
 local entity = require 'rotor.entity'
 local component = require 'rotor.component'
 
-local vec2 = @record{ x: number, y: number }
-
-local Position = @component(vec2)
-local Velocity = @component(vec2)
+local Position = @component(@record{ x: number, y: number })
+local Velocity = @component(@record{ x: number, y: number })
 local Name = @component(string)
 
 -- BasicEntity's type it's the record passed on the entity constructor.
