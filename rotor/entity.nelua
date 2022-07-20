@@ -13,14 +13,14 @@ local Position = @component(@record{ x: number, y: number })
 local Velocity = @component(@record{ x: number, y: number })
 local Name = @component(string)
 
--- BasicEntity's type it's the record passed on the entity constructor.
+-- BasicEntity's type it's the record passed on the entity type constructor.
 local BasicEntity = @entity(@record{
   position: Position,
   velocity: Velocity,
   name: Name,
 })
 
--- BasicEntity's type it's the record passed on the entity constructor.
+-- BasicEntity's type it's the record passed on the entity type constructor.
 local my_entity: BasicEntity = {
   position = { 10, 20 },
   velocity = { 30, 10 },
@@ -31,7 +31,7 @@ local my_entity: BasicEntity = {
 ## static_assert(BasicEntity.value.is_entity)
 ## static_assert(my_entity.type.is_entity)
 
--- a child entity it's just a field of the parent entity
+-- an entity tree it's done by nesting child entities on it's fields
 local ParentEntity = @entity(@record{
   position: Position,
   child: BasicEntity,
@@ -77,7 +77,7 @@ local utils = require 'rotor.utils'
     velocity: Velocity
   })
 
-  ## local pos_field = Character.value:find_fields_of_type(Position.value)[1]
+  ## local pos_field = Character.value:find_field_of_type(Position.value)
   ## print( require'inspect' (pos_field, {depth=1}) )
 
   -- output: {
@@ -88,14 +88,13 @@ local utils = require 'rotor.utils'
   -- }
   ```
   ]=]
-  function entityT.value:find_fields_of_type(type)
-    local fields = {}
+  function entityT.value:find_field_of_type(type)
     for _, field in ipairs(self.fields) do
       if field.type == type then
-        table.insert(fields, field)
+        return field
       end
     end
-    return fields
+    return nil
   end
 
   --[=[
@@ -147,7 +146,7 @@ local utils = require 'rotor.utils'
         '#'..i..' entry of filter is not a component, entity or generational index'
       )
 
-      local field = self:find_fields_of_type(filter[i])[1]
+      local field = self:find_field_of_type(filter[i])
       if not field then
         return nil
       else
