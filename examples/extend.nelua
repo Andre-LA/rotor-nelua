@@ -46,7 +46,6 @@ end
 local PersonController <nickname 'PersonController'> = @component(record{
   name: string,
   class: Class,
-  hp: integer,
 })
 
 -- Note: Prefer to use methods on the components instead on on the entities,

@@ -20,7 +20,9 @@ local Position = @component(@record{
 })
 
 -- Position's type it's the record passed on the component constructor.
-local position: Position = { pos = { x = 10, y = 20 } }
+local position: Position = {
+  pos = { 10, 20 }
+}
 
 -- but it also contains an `is_component` trait.
 ## static_assert(Position.value.is_component)

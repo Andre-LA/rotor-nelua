@@ -1,4 +1,8 @@
---[[
+### Summary
+* [extended](#extended)
+
+## extended
+
 Returns a new entity type that copies the fields of the `base_entity` type
 (which must be an entity type), plus the `extra_components` fields
 
@@ -52,40 +56,13 @@ local wizard: Wizard = {
   wizard_controller = { mp = 150 },
 }
 ```
-]]
 
--- Copyright (c) 2019-2022 André Luiz Alvares
--- SPDX-License-Identifier: MIT
+### extended
 
-local utils = require 'rotor.utils'
-local entity = require 'rotor.entity'
-
-## local make_extended = generalize(function(base_entity, extra_components)
-  ##[[
-  static_assert(
-    base_entity.is_entity,
-    "'%s' was passed as a base entity, but it's not an entity type",
-    base_entity.nickname
-  )
-
-  for _, field in ipairs(extra_components.fields) do
-    utils.value.assert_entity_field(field)
-  end
-  ]]
-
-  local extended_entity = @entity(record{})
-
-  ##[[
-  for _, field in ipairs(base_entity.fields) do
-    extended_entity.value:add_field(field.name, field.type)
-  end
-  for _, field in ipairs(extra_components.fields) do
-    extended_entity.value:add_field(field.name, field.type)
-  end
-
-  return extended_entity
-  ]]
-## end)
-
+```lua
 local extended: type = @#[make_extended]#
-return extended
+```
+
+
+
+---

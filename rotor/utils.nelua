@@ -37,7 +37,23 @@ function utils.value.assert_record_for_entity(type)
 end
 ]]
 
--- TODO: adicionar opções de filtragem
+--[[
+Returns a value of type `new_entity_type`, whose components are copied from
+the `another_entity` argument (which must be an entity).
+
+Usage:
+```lua
+-- code taken from the `extend` example
+function Warrior.init(name: string): Warrior
+  local person = Person.init(name, Class.Warrior)
+
+  local warrior = utils.copy_entity(&person, @Warrior)
+  warrior.warrior_controller.atk = 100
+
+  return warrior
+end
+```
+]]
 function utils.copy_entity(another_entity: concepts.an_entity_ptr, new_entity_type: type): #[new_entity_type.value]#
   local new_entity: new_entity_type
 
