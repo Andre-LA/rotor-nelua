@@ -26,9 +26,9 @@ Notes:
 - Prefer using `nickname` annotations to improve debuggability.
 - Always pass a new record, don't reuse records like `local Position = @component(@vec2)`.
 ]]
-local Position <nickname 'Position'> = @component(@record{ x: integer, y: integer })
-local Velocity <nickname 'Velocity'> = @component(@record{ x: integer, y: integer })
-local Name <nickname 'Name'>         = @component(@record{ data: string })
+local Position <nickname 'Position'> = @component(record{ x: integer, y: integer })
+local Velocity <nickname 'Velocity'> = @component(record{ x: integer, y: integer })
+local Name     <nickname 'Name'>     = @component(record{ data: string })
 
 -- systems --
 
@@ -39,8 +39,12 @@ can be used in order to share data between system runs if necessary.
 Later, declare the "Filter", which is a record of components pointers, only
 the entities that have these components will be processed by the system.
 
-Finally, the "run" **method**, you can use any name you prefer, and even
-creating multiple (using different filters).
+There is no rules about how or how many filters you declare, for example,
+you can embed them on the "run" method, declare it on a symbol (like below),
+or create multiple different filters for different run methods.
+
+Finally, the "run" **method**, you can use any name you prefer here
+(like "`process`").
 
 To actually process this systems with our entities, we need to create the
 system runtime and call it, but this will be explained later.
@@ -71,7 +75,7 @@ function RightmostSystem:init()
 end
 
 function RightmostSystem:run(c: RightmostSystem.Filter)
-  -- note how RightmostSystem uses the system data to share data between runs
+  -- note how RightmostSystem uses the `self` system data to share data between runs
   if c.pos.x > self.rightmost.pos.x then
     self.rightmost.pos = $c.pos
     self.rightmost.name = $c.name
@@ -79,11 +83,11 @@ function RightmostSystem:run(c: RightmostSystem.Filter)
 end
 
 --[[
-System runtimes are decalred with the `system` generic and passing the
+System runtime types are declared with the `system` generic and passing the
 `run` method.
 
-The system generic uses meta-programming heavily to make the runtime type,
-for instance, it inspects the "run" method parameters (including `self`) in
+The system generic uses meta-programming heavily to make the system runtime type,
+for instance, it inspects the passed "run" method parameters (including `self`) in
 order to create a type with specialized functions that process entities
 storages with the system data (the `self` parameter of the "run" function).
 
@@ -102,28 +106,28 @@ Entities (also called Game Objects by some engines) are the "objects" of the
 game (not in the programming perspective of OOP, but in game perspective).
 
 On the game-design perspective, characters, scenary, points of reference,
-anything on a scene, are entities.
+anything on a "scene", are entities.
 
-For example, if we had scene with a person, a table and a chair, then it
+For example, if we had a scene with a person, a table and a chair, then it
 would be a scene made made of three entities: person, table and chair.
 
 On the technical perspective, an entity it's an entry of a set of associated
 components that will be processed by a system, thus giving it behavior.
 
 In memory, entities "live" on storages, if we want to spawn an entity on the
-scene, then the entity would need to be pushed to a storage and the systems
-of this scene should process the entities of this storage.
+scene, then the entity would need to be pushed to a storage, thus the systems
+of this scene will process these entities from this storage.
 
 Finally, entities are declared with the `entity` generic, passing a record
 whose defines which components* this entity will have.
 
 Entity storages are declared by the `storage` generic with two arguments:
-the entity type, and the maximum capacity of concurrent entitities.
+the entity type, and the maximum capacity of active entities.
 
 *actually you can also use an entity type in order to make a nested entity,
 thus making an entity tree, see the `entity_tree` example for that.
 ]]
-local BasicEntity = @entity(@record{
+local BasicEntity <nickname 'BasicEntity'> = @entity(record{
   position: Position,
   velocity: Velocity,
   name: Name,
@@ -132,8 +136,10 @@ local BasicEntity.storage: storage(BasicEntity, 64)
 
 -- Finally, our main code --
 
--- initialize rightmost_system's data, note that rightmost_system's type
--- it's not on RightmostSystem, our data it's on the `data` field.
+--[[
+initialize rightmost_system's data, remember that `systems.rightmost_system`'s type
+it's not RightmostSystem, our data it's on the `data` field.
+]]
 systems.rightmost_system.data:init()
 
 -- let's create 64 entities!
@@ -160,12 +166,12 @@ for i = 0, < 64 do
     you should verify this because storages have a maximum capacity, if there is
     no available slot on the storage, then the `ok` status will be `false`.
 
-  - the `id` it's the generational index relative to _where_ the entity was
+  - the `id` it's the generational index relative to _where_ the entity got
     inserted (generational indexes are like regular indexes of arrays, but
-    with an extra generation field which identifies reuses of the index,
+    with an extra generation field which identifies reuses of this index,
     this avoids conflicts of slots reuses).
 
-  - the `entity` it's just an *BasicEntity variable, a direct reference to the
+  - the `entity` it's just a pointer(BasicEntity) variable, a direct reference to the
     inserted entity, it's useful if you need to override data later, but you
     should not use this pointer after this function, use the `id` instead.
   ]]
@@ -178,19 +184,22 @@ end
 
 -- running --
 --[[
-To process the entities on the systems, just call the `run` function of the
-**runtime** passing all the entity storage references to be procesed, note that
-this is not the "run" methods of the systems.
+To process the entities on the systems runtimes, just call the `run` function of the
+**runtime** passing all the entity storage references to be processed (note that
+this is not the "run" method of the systems).
 
 When you call the `run` method of the runtime, it will, for each
-storage reference you pass, check if the entities of such storage passes the
-filter (that is, if the entity type has all the required components), if it
-doesn't the storage it's ignored, this all happens at compile time, there is
-no run-time cost on these checks.
+storage reference you pass, check if the entity type of such storage satisfies
+the component filter of the system (that is, if the entity type has all the
+required components), if it doesn't the storage it's ignored. This happens at
+compile time, there is no run-time cost on these checks.
 
-If the entity type of the storage passes the filter, then it iterates over
-all entities of the storage and pass the components of each entity on the
-"run" method of the system data.
+However, if the entity type of the storage passes the filter, then it iterates over
+all entities of the storage and pass the components references of each entity on the
+"run" method of the system.
+
+Finally, another option about running a system it's passing the entity directly instead
+of the storage, you can see this feature being use on the `entity_tree` example.
 ]]
 
 -- let's execute movement system 10 times
@@ -199,7 +208,7 @@ for _ = 1, 10 do
   systems.movement_system:run(&BasicEntity.storage)
 end
 
--- execeute the rightmost system
+-- execute the rightmost system
 print ('executing rightmost system')
 systems.rightmost_system:run(&BasicEntity.storage)
 
