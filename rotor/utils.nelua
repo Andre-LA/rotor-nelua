@@ -13,10 +13,6 @@ local concepts = require 'rotor.concepts'
 
 local utils = @record{}
 
-## local function ExtendedEntity_macrodecl()
-local ExtendedEntity = @record{}
-## end
-
 -- returns if the type it's accepted to be on an entity field.
 ##[[
 function utils.value.valid_entity_field_type(type)
@@ -38,33 +34,6 @@ function utils.value.assert_record_for_entity(type)
   for i, field in ipairs(type.fields) do
     utils.value.assert_entity_field(field)
   end
-end
-]]
-
---[[
-Returns a new entity type that copies the same fields of the passed `e_type`, plus the `extra`
-components, note that only the record it's "cloned", not the methods.
-
-This is a preprocessor function.
-]]
-##[[
-function utils.value.extend_entity(base_entity, extra_components)
-  static_assert(base_entity.value.is_entity, 'The passed base_entity is not an entity type')
-
-  for fieldname, type in pairs(extra_components) do
-    utils.value.assert_entity_field({ name = fieldname, type = type.value })
-  end
-
-  ExtendedEntity_macrodecl()
-
-  for _, field in ipairs(base_entity.value.fields) do
-    ExtendedEntity.value:add_field(field.name, field.type)
-  end
-  for fieldname, type in pairs(extra_components) do
-    ExtendedEntity.value:add_field(fieldname, type.value)
-  end
-
-  return ExtendedEntity
 end
 ]]
 
