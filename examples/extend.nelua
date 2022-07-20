@@ -24,7 +24,7 @@ This is inspired from "variant prefabs" on other engines.
 local io = require 'io'
 local entity = require 'rotor.entity'
 local component = require 'rotor.component'
-local extended = require 'rotor.extended'
+local extended_entity = require 'rotor.extended_entity'
 local utils = require 'rotor.utils'
 
 local Class = @enum{
@@ -73,7 +73,7 @@ local WarriorController <nickname 'WarriorController'> = @component(record{
   atk: integer
 })
 
-local Warrior <nickname'Warrior'> = @extended(Person, record{
+local Warrior <nickname'Warrior'> = @extended_entity(Person, record{
   warrior_controller: WarriorController,
 })
 
@@ -91,7 +91,7 @@ local WizardController <nickname 'WizardController'> = @component(record{
   mp: integer
 })
 
-local Wizard <nickname 'Wizard'> = @extended(Person, record{
+local Wizard <nickname 'Wizard'> = @extended_entity(Person, record{
   wizard_controller: WizardController,
 })
 

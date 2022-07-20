@@ -12,7 +12,7 @@ Usage:
 
 local entity = require 'rotor.entity'
 local component = require 'rotor.component'
-local extended = require 'rotor.extended'
+local extended_entity = require 'rotor.extended_entity'
 
 -- person (the base)
 local PersonController <nickname 'PersonController'> = @component(record{
@@ -28,7 +28,7 @@ local WarriorController <nickname 'WarriorController'> = @component(record{
   atk: integer
 })
 
-local Warrior <nickname'Warrior'> = @extended(Person, record{
+local Warrior <nickname'Warrior'> = @extended_entity(Person, record{
   warrior_controller: WarriorController,
 })
 
@@ -37,7 +37,7 @@ local WizardController <nickname 'WizardController'> = @component(record{
   mp: integer
 })
 
-local Wizard <nickname 'Wizard'> = @extended(Person, record{
+local Wizard <nickname 'Wizard'> = @extended_entity(Person, record{
   wizard_controller: WizardController,
 })
 
@@ -60,7 +60,7 @@ local wizard: Wizard = {
 local utils = require 'rotor.utils'
 local entity = require 'rotor.entity'
 
-## local make_extended = generalize(function(base_entity, extra_components)
+## local make_extended_entity = generalize(function(base_entity, extra_components)
   ##[[
   static_assert(
     base_entity.is_entity,
@@ -73,19 +73,19 @@ local entity = require 'rotor.entity'
   end
   ]]
 
-  local extended_entity = @entity(record{})
+  local extended_entity_t = @entity(record{})
 
   ##[[
   for _, field in ipairs(base_entity.fields) do
-    extended_entity.value:add_field(field.name, field.type)
+    extended_entity_t.value:add_field(field.name, field.type)
   end
   for _, field in ipairs(extra_components.fields) do
-    extended_entity.value:add_field(field.name, field.type)
+    extended_entity_t.value:add_field(field.name, field.type)
   end
 
-  return extended_entity
+  return extended_entity_t
   ]]
 ## end)
 
-local extended: type = @#[make_extended]#
-return extended
+local extended_entity: type = @#[make_extended_entity]#
+return extended_entity

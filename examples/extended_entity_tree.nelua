@@ -19,7 +19,7 @@ local entity    = require 'rotor.entity'
 local system    = require 'rotor.system'
 local concepts  = require 'rotor.concepts'
 local utils     = require 'rotor.utils'
-local extended  = require 'rotor.extended'
+local extended_entity = require 'rotor.extended_entity'
 
 -- nene
 local Nene = require 'nene'
@@ -61,14 +61,14 @@ local OrbitalEntity = @entity(record{
   orbital_body: OrbitalBody,
 })
 
-local Moon <nickname 'Moon'> = @extended(OrbitalEntity, record{})
+local Moon <nickname 'Moon'> = @extended_entity(OrbitalEntity, record{})
 
-local Earth <nickname 'Earth'> = @extended(OrbitalEntity, record{
+local Earth <nickname 'Earth'> = @extended_entity(OrbitalEntity, record{
   -- making a child entity it's just a matter of making it a field of the parent entity
   moon: Moon,
 })
 
-local Sun <nickname 'Sun'> = @extended(OrbitalEntity, record{
+local Sun <nickname 'Sun'> = @extended_entity(OrbitalEntity, record{
   sun: SunTag,
   earth: Earth,
 })

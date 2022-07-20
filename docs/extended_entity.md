@@ -1,7 +1,7 @@
 ### Summary
-* [extended](#extended)
+* [extended_entity](#extended_entity)
 
-## extended
+## extended_entity
 
 Returns a new entity type that copies the fields of the `base_entity` type
 (which must be an entity type), plus the `extra_components` fields
@@ -16,7 +16,7 @@ Usage:
 
 local entity = require 'rotor.entity'
 local component = require 'rotor.component'
-local extended = require 'rotor.extended'
+local extended_entity = require 'rotor.extended_entity'
 
 -- person (the base)
 local PersonController <nickname 'PersonController'> = @component(record{
@@ -32,7 +32,7 @@ local WarriorController <nickname 'WarriorController'> = @component(record{
   atk: integer
 })
 
-local Warrior <nickname'Warrior'> = @extended(Person, record{
+local Warrior <nickname'Warrior'> = @extended_entity(Person, record{
   warrior_controller: WarriorController,
 })
 
@@ -41,7 +41,7 @@ local WizardController <nickname 'WizardController'> = @component(record{
   mp: integer
 })
 
-local Wizard <nickname 'Wizard'> = @extended(Person, record{
+local Wizard <nickname 'Wizard'> = @extended_entity(Person, record{
   wizard_controller: WizardController,
 })
 
@@ -57,10 +57,10 @@ local wizard: Wizard = {
 }
 ```
 
-### extended
+### extended_entity
 
 ```lua
-local extended: type = @#[make_extended]#
+local extended_entity: type = @#[make_extended_entity]#
 ```
 
 
