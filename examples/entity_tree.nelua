@@ -25,10 +25,9 @@ local Vec2 = require 'nene.math.vec2'
 local Color = require 'nene.color'
 
 -- components --
-local Name = @component(string)
-local SunTag = @component(record{})
+local SunTag <nickname 'SunTag'> = @component(record{})
 
-local Position = @component(@record{
+local Position <nickname 'Position'> = @component(@record{
   origin_pos: Vec2,
   local_pos: Vec2,
 })
@@ -37,7 +36,7 @@ function Position:final_pos()
   return self.origin_pos + self.local_pos
 end
 
-local OrbitalBody = @component(@record{
+local OrbitalBody <nickname 'OrbitalBody'> = @component(@record{
   current_angle: number,
   speed: number,
   distance: number,
@@ -45,7 +44,7 @@ local OrbitalBody = @component(@record{
   color: Color,
 })
 
-function OrbitalBody:update(pos: *Position, dt: number)
+function OrbitalBody:update(pos: *Position)
   local nene = Nene.instance()
 
   self.current_angle = self.current_angle + self.speed * nene.delta_time
@@ -55,12 +54,12 @@ function OrbitalBody:update(pos: *Position, dt: number)
 end
 
 -- entities --
-local Moon = @entity(@record{
+local Moon <nickname 'Moon'> = @entity(record{
   position: Position,
   orbital_body: OrbitalBody,
 })
 
-local Earth = @entity(@record{
+local Earth <nickname 'Earth'> = @entity(record{
   position: Position,
   orbital_body: OrbitalBody,
 
@@ -68,7 +67,7 @@ local Earth = @entity(@record{
   moon: Moon,
 })
 
-local Sun = @entity(@record{
+local Sun <nickname 'Sun'> = @entity(record{
   position: Position,
   orbital_body: OrbitalBody,
   sun: SunTag,
@@ -84,23 +83,33 @@ local Sun.storage: storage(Sun, 1)
 -- solar system
 local SolarSystem = @record{}
 
+-- this is a polymorphic function that accepts any pointer of an entity that have a position component
 local function position_hierarchy(entity_ptr: #[concepts.value.an_entity_ptr_with({Position.value})]#)
   ## local entity_type = entity_ptr.type.subtype
 
+  -- for each child entity that have a position component
   ## for _, child_field in ipairs(entity_type:find_children_fields({Position.value})) do
-    ## local child_pos_field = child_field.type:find_fields_of_type(Position.value)[1]
-
+    -- get the reference for iterated child
     local child_entity = &entity_ptr.#|child_field.name|#
 
-    child_entity.position.origin_pos = entity_ptr.position:final_pos()
+    -- get the reference of the position field of the child...
+    ## local child_pos_field = child_field.type:find_field_of_type(Position.value)
+    local child_pos = &child_entity.#|child_pos_field.name|#
+
+    -- and finally update the origin position,
+    child_pos.origin_pos = entity_ptr.position:final_pos()
+
+    -- then call the function recursively on the entity tree
     position_hierarchy(child_entity)
   ## end
 end
 
 local function orbital_bodies_hierarchy(entity_ptr: concepts.an_entity_ptr)
   ## local entity_type = entity_ptr.type.subtype
+  ## local pos_field = entity_type:find_field_of_type(Position.value)
 
-  entity_ptr.orbital_body:update(entity_ptr.position)
+  local entity_pos = &entity_ptr.#|pos_field.name|#
+  entity_ptr.orbital_body:update(entity_pos)
 
   ## for _, child_field in ipairs(entity_type:find_children_fields({Position.value, OrbitalBody.value})) do
     local child_entity = &entity_ptr.#|child_field.name|#
@@ -137,7 +146,7 @@ local orbital_body_painter: system(OrbitalBodyPainter.run)
 
 -- app --
 local ok, nene <close> = Nene.init('Entity Tree', 800, 600)
-check(ok)
+assert(ok)
 
 local ok, id, sun: *Sun = Sun.storage:push({
   position = {{ (400-32), (300-32) }},
@@ -163,14 +172,13 @@ local ok, id, sun: *Sun = Sun.storage:push({
     },
   }
 })
-check(ok)
+assert(ok)
 
 repeat
   nene:poll_events()
   nene:render_clear(Color.Palette.bg)
 
-    -- just for the sake of showcase, in rotor you can pass a storage or
-    -- the entity directly to the system.
+    -- in rotor you can pass a storage or the entity directly to the system.
     solar_system:run(&Sun.storage)
     orbital_body_painter:run(sun)
 
