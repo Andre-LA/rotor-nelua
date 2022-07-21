@@ -37,7 +37,7 @@ function Class.__tostring(self: Class): string
   end
 end
 
-local PersonController = @component(@record{
+local PersonController <nickname 'PersonController'> = @component(@record{
   name: string,
   class: Class,
 })
@@ -48,7 +48,7 @@ function PersonController:introduce_yourself()
 end
 
 -- base entity
-local Person = @entity(@record{
+local Person <nickname 'Person'> = @entity(@record{
   person_controller: PersonController,
 })
 
