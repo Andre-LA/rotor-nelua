@@ -1,6 +1,6 @@
 --[[
-Same example of `entity_tree`, this time, using the extended entities, be sure to
-read the `entity_tree` example first.
+Same example of `entity_tree`, this time, using derived entities, be sure to
+read the `entity_tree` and `derived` examples first.
 
 Note: you will need nene in order to run this example: https://github.com/Andre-LA/nene/
       run with `nelua examples/entity_tree -L path/to/nene`
@@ -19,7 +19,7 @@ local entity    = require 'rotor.entity'
 local system    = require 'rotor.system'
 local concepts  = require 'rotor.concepts'
 local utils     = require 'rotor.utils'
-local extended_entity = require 'rotor.extended_entity'
+local derived_entity = require 'rotor.derived_entity'
 
 -- nene
 local Nene = require 'nene'
@@ -61,14 +61,14 @@ local OrbitalEntity = @entity(record{
   orbital_body: OrbitalBody,
 })
 
-local Moon <nickname 'Moon'> = @extended_entity(OrbitalEntity, record{})
+local Moon <nickname 'Moon'> = @derived_entity(OrbitalEntity, record{})
 
-local Earth <nickname 'Earth'> = @extended_entity(OrbitalEntity, record{
+local Earth <nickname 'Earth'> = @derived_entity(OrbitalEntity, record{
   -- making a child entity it's just a matter of making it a field of the parent entity
   moon: Moon,
 })
 
-local Sun <nickname 'Sun'> = @extended_entity(OrbitalEntity, record{
+local Sun <nickname 'Sun'> = @derived_entity(OrbitalEntity, record{
   sun: SunTag,
   earth: Earth,
 })

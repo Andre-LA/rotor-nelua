@@ -12,8 +12,8 @@ Technically there's nothing really special about them, you only need to
 initialize the base and then override the data.
 
 However, if you need to actually make a new type, and even extend it, then
-you probably need to extend the base entity type on a new type, for this,
-see the `extend` example.
+you probably need to derive the base entity type on a new type, for this,
+see the `derived` example.
 ]]
 
 -- Copyright (c) 2019-2022 André Luiz Alvares

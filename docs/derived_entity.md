@@ -1,22 +1,22 @@
 ### Summary
-* [extended_entity](#extended_entity)
+* [derived_entity](#derived_entity)
 
-## extended_entity
+## derived_entity
 
 Returns a new entity type that copies the fields of the `base_entity` type
-(which must be an entity type), plus the `extra_components` fields
+(which must be an entity type), plus the `extra_components` fields.
 
 > Note: Only the record it's "cloned", not the methods, also this
 is not an inheritance implementation, although it's used in a similar way.
 
 Usage:
 ```lua
--- please read the `extend` and `extended_entity_tree` examples
+-- please read the `derived` and `derived_entity_tree` examples
 -- to read how to use this feature in practice.
 
 local entity = require 'rotor.entity'
 local component = require 'rotor.component'
-local extended_entity = require 'rotor.extended_entity'
+local derived_entity = require 'rotor.derived_entity'
 
 -- person (the base)
 local PersonController <nickname 'PersonController'> = @component(record{
@@ -32,7 +32,7 @@ local WarriorController <nickname 'WarriorController'> = @component(record{
   atk: integer
 })
 
-local Warrior <nickname'Warrior'> = @extended_entity(Person, record{
+local Warrior <nickname'Warrior'> = @derived_entity(Person, record{
   warrior_controller: WarriorController,
 })
 
@@ -41,7 +41,7 @@ local WizardController <nickname 'WizardController'> = @component(record{
   mp: integer
 })
 
-local Wizard <nickname 'Wizard'> = @extended_entity(Person, record{
+local Wizard <nickname 'Wizard'> = @derived_entity(Person, record{
   wizard_controller: WizardController,
 })
 
@@ -57,10 +57,10 @@ local wizard: Wizard = {
 }
 ```
 
-### extended_entity
+### derived_entity
 
 ```lua
-local extended_entity: type = @#[make_extended_entity]#
+local derived_entity: type = @#[make_derived_entity]#
 ```
 
 

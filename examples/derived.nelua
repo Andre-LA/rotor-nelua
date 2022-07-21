@@ -1,21 +1,23 @@
 --[[
-Extending entities
+Deriving entities example
 
 Note: Be sure to check `override` example first.
 
-Extending an entity it's essentially using an utility function to create
-a **new** entity type that copies the same fields of other entity, and
-_extending_ it with more components or children fields.
+Deriving an entity it's essentially using the `derived_entity` type
+constructor to create a **new** entity type that copies the same fields
+of another entity, and _extending_ it with more components or children fields.
 
 It's pretty useful when a entity type it's a superset of another more
-basic entity type.
+basic entity type or you want to create a new type while aliasing to another
+entity type.
 
 Note that only the record's fields are copied, not the methods, thus for
 reusable methods, either declare them on components directly; use local
-functions that receives the components on arguments; or just use traits
-to make polymorphic functions that accepts both.
+functions that receives the components on arguments; use traits
+to make polymorphic functions that accepts both or make these methods
+on the system filter.
 
-This is inspired from "variant prefabs" on other engines.
+This is inspired from "variant prefabs" on other game engines.
 ]]
 
 -- Copyright (c) 2019-2022 André Luiz Alvares
@@ -24,7 +26,7 @@ This is inspired from "variant prefabs" on other engines.
 local io = require 'io'
 local entity = require 'rotor.entity'
 local component = require 'rotor.component'
-local extended_entity = require 'rotor.extended_entity'
+local derived_entity = require 'rotor.derived_entity'
 local utils = require 'rotor.utils'
 
 local Class = @enum{
@@ -49,7 +51,7 @@ local PersonController <nickname 'PersonController'> = @component(record{
 })
 
 -- Note: Prefer to use methods on the components instead on on the entities,
---       this way you make the code reusable on extended entity types.
+--       this way you make the code reusable on derived entity types.
 function PersonController:introduce_yourself()
   io.printf("I'm the %s %s\n", tostring(self.class), self.name)
 end
@@ -73,7 +75,7 @@ local WarriorController <nickname 'WarriorController'> = @component(record{
   atk: integer
 })
 
-local Warrior <nickname'Warrior'> = @extended_entity(Person, record{
+local Warrior <nickname'Warrior'> = @derived_entity(Person, record{
   warrior_controller: WarriorController,
 })
 
@@ -91,7 +93,7 @@ local WizardController <nickname 'WizardController'> = @component(record{
   mp: integer
 })
 
-local Wizard <nickname 'Wizard'> = @extended_entity(Person, record{
+local Wizard <nickname 'Wizard'> = @derived_entity(Person, record{
   wizard_controller: WizardController,
 })
 

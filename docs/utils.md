@@ -27,7 +27,7 @@ the `another_entity` argument (which must be an entity).
 
 Usage:
 ```lua
--- code taken from the `extend` example
+-- code taken from the `derived` example
 function Warrior.init(name: string): Warrior
   local person = Person.init(name, Class.Warrior)
 
