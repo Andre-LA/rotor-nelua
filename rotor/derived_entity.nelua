@@ -68,8 +68,10 @@ local entity = require 'rotor.entity'
     base_entity.nickname
   )
 
-  for _, field in ipairs(extra_components.fields) do
-    utils.value.assert_entity_field(field)
+  if extra_components then
+    for _, field in ipairs(extra_components.fields) do
+      utils.value.assert_entity_field(field)
+    end
   end
   ]]
 
@@ -79,8 +81,11 @@ local entity = require 'rotor.entity'
   for _, field in ipairs(base_entity.fields) do
     derived_entity_t.value:add_field(field.name, field.type)
   end
-  for _, field in ipairs(extra_components.fields) do
-    derived_entity_t.value:add_field(field.name, field.type)
+
+  if extra_components then
+    for _, field in ipairs(extra_components.fields) do
+      derived_entity_t.value:add_field(field.name, field.type)
+    end
   end
 
   return derived_entity_t

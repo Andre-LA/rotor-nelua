@@ -61,7 +61,7 @@ local OrbitalEntity = @entity(record{
   orbital_body: OrbitalBody,
 })
 
-local Moon <nickname 'Moon'> = @derived_entity(OrbitalEntity, record{})
+local Moon <nickname 'Moon'> = @derived_entity(OrbitalEntity)
 
 local Earth <nickname 'Earth'> = @derived_entity(OrbitalEntity, record{
   -- making a child entity it's just a matter of making it a field of the parent entity
