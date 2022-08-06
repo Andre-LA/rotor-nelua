@@ -30,13 +30,20 @@ local position: Position = {
 -- SPDX-License-Identifier: MIT
 
 ##[[
-local make_component = generalize(function(T)
+local function impl_is_component(T)
   static_assert(traits.is_type(T), 'passed value %s is not a type', T)
   static_assert(T.is_record, 'passed value %s is not a record', T)
   T.is_component = true
   return T
+end
+
+local make_component = generalize(function(T)
+  return impl_is_component(T)
 end)
 ]]
 
 local component: type = #[make_component]#
+
+## component.value.impl_is_component = impl_is_component
+
 return component
