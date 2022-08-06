@@ -36,14 +36,9 @@ local function impl_is_component(T)
   T.is_component = true
   return T
 end
-
-local make_component = generalize(function(T)
-  return impl_is_component(T)
-end)
 ]]
 
-local component: type = #[make_component]#
-
+local component: type = #[generalize(impl_is_component)]#
 ## component.value.impl_is_component = impl_is_component
 
 return component
