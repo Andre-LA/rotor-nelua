@@ -56,7 +56,7 @@ function OrbitalBody:update(pos: *Position)
 end
 
 -- entities --
-local OrbitalEntity = @entity(record{
+local OrbitalEntity <nickname 'OrbitalEntity'> = @entity(record{
   position: Position,
   orbital_body: OrbitalBody,
 })
