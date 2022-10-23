@@ -4,6 +4,8 @@ Rotor an ECS written in [Nelua][nelua-website].
 
 Please check the [docs](docs) and the [examples](examples).
 
+## Simple Example
+
 ```lua
 local math = require 'math'
 local os   = require 'os'

@@ -1,6 +1,7 @@
 ### Summary
 * [GenIdx](#genidx)
 * [GenIdx.__eq](#genidx__eq)
+* [GenIdx.is_valid](#genidxis_valid)
 
 ## gen_idx
 
@@ -24,8 +25,16 @@ each index unique between re-uses.
 function GenIdx.__eq(l: GenIdx, r: GenIdx): boolean
 ```
 
-Equality test for generational indexes
+Equality test for generational indexes.
 
-It compares if the index and the generation of both operands are equal
+It compares if the index and the generation of both operands are equal.
+
+### GenIdx.is_valid
+
+```lua
+function GenIdx.is_valid(self: GenIdx): boolean
+```
+
+Returns if a certain generational index is valid
 
 ---

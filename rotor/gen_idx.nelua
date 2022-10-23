@@ -13,11 +13,18 @@ local GenIdx = @record{
 -- The `is_genidx` trait
 ## GenIdx.value.is_genidx = true
 
--- Equality test for generational indexes
---
--- It compares if the index and the generation of both operands are equal
+--[[
+Equality test for generational indexes.
+
+It compares if the index and the generation of both operands are equal.
+]]
 function GenIdx.__eq(l: GenIdx, r: GenIdx): boolean
   return l.index == r.index and l.generation == r.generation
+end
+
+-- Returns if a certain generational index is valid
+function GenIdx.is_valid(self: GenIdx): boolean
+  return self.generation ~= 0
 end
 
 return GenIdx

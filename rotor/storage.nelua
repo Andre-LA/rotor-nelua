@@ -13,7 +13,6 @@ slot, thus the generational index of this fourth entry will be a second generati
 -- Copyright (c) 2019-2022 André Luiz Alvares
 -- SPDX-License-Identifier: MIT
 
-
 local GenIdx = require 'rotor.gen_idx'
 
 ## local make_storage = generalize(function(T, size)
@@ -43,19 +42,18 @@ local GenIdx = require 'rotor.gen_idx'
   ## storage.value.subtype = T
 
   local function find_next_available(storage: *storage, next_idx: usize): (boolean, usize)
-    local idx = next_idx
     local found = false
 
     for i = 1, SIZE do
-      if storage.unavailables[idx] then
-        idx = (idx + 1) % SIZE
+      if storage.unavailables[next_idx] then
+        next_idx = (next_idx + 1) % SIZE
       else
         found = true
         break
       end
     end
 
-    return found, idx
+    return found, next_idx
   end
 
   -- resets storage to a zeroed state
