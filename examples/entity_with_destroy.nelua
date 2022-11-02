@@ -1,0 +1,55 @@
+-- Entity with `destroy` call example
+-- This code shows how to destroy entities while removal.
+
+-- Copyright (c) 2019-2022 André Luiz Alvares
+-- SPDX-License-Identifier: MIT
+
+--[[
+Sometimes we need to allocate some values of component data
+on the heap, thus, a `destroy` call is needed before dropping
+them, otherwise it will leak.
+]]
+
+local vector = require 'vector'
+
+local entity = require 'rotor.entity'
+local storage = require 'rotor.storage'
+local component = require 'rotor.component'
+local GenIdx = require 'rotor.gen_idx'
+
+-- let's create our component with a vector that'll allocate on the heap
+local MyComponent: type <nickname 'MyComponent'> = @component(@record{
+  list_of_names: vector(string),
+})
+
+function MyComponent.init(): MyComponent
+  return MyComponent{
+    list_of_names = { 'Andrew', 'Tomas', 'Jalienne' }
+  }
+end
+
+function MyComponent:destroy()
+  self.list_of_names:destroy()
+end
+
+-- now, let's create or entity and it's storage
+local MyEntity <nickname 'MyEntity'> = @entity(record{
+  my_component: MyComponent,
+})
+
+function MyEntity:destroy()
+  self.my_component:destroy()
+  print 'entity destroyed'
+end
+
+
+-- let's test:
+local my_storage: storage(MyEntity, 1)
+
+local ok, id, entity = my_storage:push(MyEntity{ my_component = MyComponent.init() })
+assert(ok, "entity couldn't be spawned")
+
+-- and let's destroy it, by passing MyEntity.destroy on the 2nd argument,
+-- Rotor will call it once the entry is removed.
+my_storage:remove(id, MyEntity.destroy) -- it will output "entity destroyed"
+

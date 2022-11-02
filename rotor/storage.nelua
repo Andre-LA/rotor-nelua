@@ -93,9 +93,16 @@ local GenIdx = require 'rotor.gen_idx'
 
   If the entry is found, then the slot it's zeroed and the function returns `true`. Othewise
   it does nothing and returns `false`.
+
+  You can optionally pass a `destroyer` function, which will be called passing a pointer to
+  the entry, this is useful if you need to free resources on this entry.
   ]]
-  function storage:remove(idx: GenIdx): boolean
+  function storage:remove(idx: GenIdx, destroyer: facultative(function(*T))): boolean
     if self.generations[idx.index] == idx.generation then
+      ## if not destroyer.type.is_niltype then
+        check(destroyer, "Passed an nilptr 'destroyer' function!")
+        destroyer(&self.entries[idx.index])
+      ## end
       self.entries[idx.index] = {}
       self.unavailables[idx.index] = false
       return true
