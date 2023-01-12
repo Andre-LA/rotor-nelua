@@ -56,13 +56,6 @@ local GenIdx = require 'rotor.gen_idx'
     return found, next_idx
   end
 
-  -- resets storage to a zeroed state
-  function storage:clear()
-    self.unavailables = {}
-    self.generations = {}
-    self.next_idx = 0
-  end
-
   --[[
   Push a new entry on the storage on the next free slot, if no free slots are available,
   then a warning will be printed and this function will return `false`, a zeroed generational
@@ -147,6 +140,22 @@ local GenIdx = require 'rotor.gen_idx'
   ]]
   function storage:__mpairs(): (auto, *storage, isize)
     return storage.__mnext, self, -1
+  end
+  
+  -- resets storage to a zeroed state
+  function storage:clear(on_clear: facultative(function(*T)))
+    ## if not on_clear.type.is_niltype then
+      check(on_clear, "Passed an nilptr 'on_clear' function!")
+      
+      for _, entry in mpairs(self) do
+        on_clear(entry)
+      end
+    ## end
+    
+    self.entries = {}
+    self.unavailables = {}
+    self.generations = {}
+    self.next_idx = 0
   end
 
   ## return storage

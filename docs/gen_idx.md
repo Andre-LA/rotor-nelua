@@ -12,7 +12,7 @@ Generational Index module
 ```lua
 local GenIdx = @record{
   index: usize,      -- 0-based, since this is an index for arrays
-  generation: usize, -- 1-based: 1 is the "first" valid generation, 0 is invalid
+  generation: uint16, -- 1-based: 1 is the "first" valid generation, 0 is invalid
 }
 ```
 

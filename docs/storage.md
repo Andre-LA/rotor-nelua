@@ -1,11 +1,11 @@
 ### Summary
 * [storage](#storage)
-* [storage:clear](#storageclear)
 * [storage:push](#storagepush)
 * [storage:remove](#storageremove)
 * [storage:mget](#storagemget)
 * [storage:__mnext](#storage__mnext)
 * [storage:__mpairs](#storage__mpairs)
+* [storage:clear](#storageclear)
 * [storage](#storage)
 
 ## storage
@@ -33,14 +33,6 @@ local storage = @record{
 
 the storage type
 
-### storage:clear
-
-```lua
-function storage:clear()
-```
-
-resets storage to a zeroed state
-
 ### storage:push
 
 ```lua
@@ -57,13 +49,16 @@ the generational index of the used slot and a reference to the inserted entry.
 ### storage:remove
 
 ```lua
-function storage:remove(idx: GenIdx): boolean
+function storage:remove(idx: GenIdx, destroyer: facultative(function(*T))): boolean
 ```
 
 Removes an entry associated with the generational index.
 
 If the entry is found, then the slot it's zeroed and the function returns `true`. Othewise
 it does nothing and returns `false`.
+
+You can optionally pass a `destroyer` function, which will be called passing a pointer to
+the entry, this is useful if you need to free resources on this entry.
 
 ### storage:mget
 
@@ -94,6 +89,14 @@ function storage:__mpairs(): (auto, *storage, isize)
 
 Iterator for `mpairs`, this allows using `for in` using the `mpairs` iterator on
 the storage, it iterates only on the entries and skips unused slots.
+
+### storage:clear
+
+```lua
+function storage:clear(on_clear: facultative(function(*T)))
+```
+
+resets storage to a zeroed state
 
 ### storage
 
