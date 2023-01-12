@@ -1,7 +1,7 @@
 -- Entity with `destroy` call example
 -- This code shows how to destroy entities while removal.
 
--- Copyright (c) 2019-2022 André Luiz Alvares
+-- Copyright (c) 2019-present André Luiz Alvares
 -- SPDX-License-Identifier: MIT
 
 --[[

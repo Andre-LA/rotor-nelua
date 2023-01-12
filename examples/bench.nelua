@@ -6,7 +6,7 @@ Note: you will need nene in order to run this example: https://github.com/Andre-
       run with `nelua examples/entity_tree -L path/to/nene`
 ]]
 
--- Copyright (c) 2019-2022 André Luiz Alvares
+-- Copyright (c) 2019-present André Luiz Alvares
 -- SPDX-License-Identifier: MIT
 
 local Nene = require 'nene'

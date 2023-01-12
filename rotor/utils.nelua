@@ -4,7 +4,7 @@ The Utils module.
 This module have some useful utility functions.
 ]]
 
--- Copyright (c) 2019-2022 André Luiz Alvares
+-- Copyright (c) 2019-present André Luiz Alvares
 -- SPDX-License-Identifier: MIT
 
 -- The util module

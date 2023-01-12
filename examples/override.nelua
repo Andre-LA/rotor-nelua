@@ -16,7 +16,7 @@ you probably need to derive the base entity type on a new type, for this,
 see the `derived` example.
 ]]
 
--- Copyright (c) 2019-2022 André Luiz Alvares
+-- Copyright (c) 2019-present André Luiz Alvares
 -- SPDX-License-Identifier: MIT
 
 local io = require 'io'

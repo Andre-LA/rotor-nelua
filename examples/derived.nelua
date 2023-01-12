@@ -20,7 +20,7 @@ on the system filter.
 This is inspired from "variant prefabs" on other game engines.
 ]]
 
--- Copyright (c) 2019-2022 André Luiz Alvares
+-- Copyright (c) 2019-present André Luiz Alvares
 -- SPDX-License-Identifier: MIT
 
 local io = require 'io'

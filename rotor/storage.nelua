@@ -10,7 +10,7 @@ and then removes the second entry, then a fourth entry can be pushed and it will
 slot, thus the generational index of this fourth entry will be a second generation of the second slot.
 ]]
 
--- Copyright (c) 2019-2022 André Luiz Alvares
+-- Copyright (c) 2019-present André Luiz Alvares
 -- SPDX-License-Identifier: MIT
 
 local GenIdx = require 'rotor.gen_idx'

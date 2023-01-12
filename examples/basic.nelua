@@ -1,7 +1,7 @@
 -- Basic example
 -- This code shows the basic usage of rotor on a full ECS usage.
 
--- Copyright (c) 2019-2022 André Luiz Alvares
+-- Copyright (c) 2019-present André Luiz Alvares
 -- SPDX-License-Identifier: MIT
 
 local math = require 'math'

@@ -1,6 +1,6 @@
 -- Generational Index module
 
--- Copyright (c) 2019-2022 André Luiz Alvares
+-- Copyright (c) 2019-present André Luiz Alvares
 -- SPDX-License-Identifier: MIT
 
 -- Generational Indexes, it identifies an index with a generation, making
