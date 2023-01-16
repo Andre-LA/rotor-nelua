@@ -49,7 +49,7 @@ For a better understanding, see the examples.
 require 'iterators'
 
 local storage = require 'rotor.storage'
-local concepts = require 'rotor.concepts'
+local rotor_concepts = require 'rotor.concepts'
 
 ## local make_system = generalize(function(sysfn, order, is_reversed)
   ##[[
@@ -105,6 +105,7 @@ local concepts = require 'rotor.concepts'
   local system: type = @record{
     data: systemdata,
   }
+  ## system.value.is_system = true
 
   -- verify if the iterated entity type pass the system's filter at compile time
   ##[[
@@ -161,7 +162,7 @@ local concepts = require 'rotor.concepts'
   In order to run the system for each entity, the component references
   required by the system are collected, and then, passed as the second argument
   ]]
-  local function call_system_on_entity(data: *systemdata, entity: concepts.an_entity_ptr, EntityType: type)
+  local function call_system_on_entity(data: *systemdata, entity: rotor_concepts.an_entity_ptr, EntityType: type)
     ## local function run_system_on_entity()
       ## if entity_pass_filter(EntityType.value) then
         -- variable that stores the collected component references
