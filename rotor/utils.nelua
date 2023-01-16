@@ -9,8 +9,6 @@ This module have some useful utility functions.
 
 -- The util module
 
-local concepts = require 'rotor.concepts'
-
 local utils = @record{}
 
 -- returns if the type it's accepted to be on an entity field.
@@ -36,36 +34,5 @@ function utils.value.assert_record_for_entity(type)
   end
 end
 ]]
-
---[[
-Returns a value of type `new_entity_type`, whose components are copied from
-the `another_entity` argument (which must be an entity).
-
-Usage:
-```lua
--- code taken from the `derived` example
-function Warrior.init(name: string): Warrior
-  local person = Person.init(name, Class.Warrior)
-
-  local warrior = utils.copy_entity(&person, @Warrior)
-  warrior.warrior_controller.atk = 100
-
-  return warrior
-end
-```
-]]
-function utils.copy_entity(another_entity: concepts.an_entity_ptr, new_entity_type: type): #[new_entity_type.value]#
-  local new_entity: new_entity_type
-
-  ## for _, ne_field in ipairs(new_entity_type.value.fields) do
-    ## for _, ae_field in ipairs(another_entity.type.subtype.fields) do
-      ## if ne_field.type == ae_field.type then
-        new_entity.#|ne_field.name|# = another_entity.#|ae_field.name|#
-      ## end
-    ## end
-  ## end
-
-  return new_entity
-end
 
 return utils

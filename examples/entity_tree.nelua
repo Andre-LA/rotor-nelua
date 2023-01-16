@@ -17,7 +17,7 @@ local storage   = require 'rotor.storage'
 local component = require 'rotor.component'
 local entity    = require 'rotor.entity'
 local system    = require 'rotor.system'
-local concepts  = require 'rotor.concepts'
+local rotor_concepts  = require 'rotor.concepts'
 
 -- nene
 local Nene = require 'nene'
@@ -84,7 +84,7 @@ local Sun.storage: storage(Sun, 1)
 local SolarSystem = @record{}
 
 -- this is a polymorphic function that accepts any pointer of an entity that have a position component
-local function position_hierarchy(entity_ptr: #[concepts.value.an_entity_ptr_with({Position.value})]#)
+local function position_hierarchy(entity_ptr: #[rotor_concepts.value.an_entity_ptr_with({Position.value})]#)
   ## local entity_type = entity_ptr.type.subtype
 
   -- for each child entity that have a position component
@@ -104,7 +104,7 @@ local function position_hierarchy(entity_ptr: #[concepts.value.an_entity_ptr_wit
   ## end
 end
 
-local function orbital_bodies_hierarchy(entity_ptr: concepts.an_entity_ptr)
+local function orbital_bodies_hierarchy(entity_ptr: rotor_concepts.an_entity_ptr)
   ## local entity_type = entity_ptr.type.subtype
   ## local pos_field = entity_type:find_field_of_type(Position.value)
 
