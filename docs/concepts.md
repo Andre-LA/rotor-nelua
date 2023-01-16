@@ -8,6 +8,8 @@
 * [Concepts.an_storage_ptr](#conceptsan_storage_ptr)
 * [Concepts.an_component](#conceptsan_component)
 * [Concepts.an_component_ptr](#conceptsan_component_ptr)
+* [Concepts.an_system](#conceptsan_system)
+* [Concepts.an_system_ptr](#conceptsan_system_ptr)
 
 ## concepts
 
@@ -25,8 +27,12 @@ Simple concepts list:
 * `an_storage_ptr`: accepts any storage record pointer.
 * `an_component`: accepts any component record.
 * `an_component_ptr`: accepts any component record pointer.
+* `an_system`: accepts any system value.
+* `an_system_ptr`: accepts any system pointer.
 * `an_entity_with(filter)`: accepts any entity record that have the components passed on filter
 * `an_entity_ptr_with(filter)`: accepts any entity record that have the components passed on filter
+* `an_entity_subset(entity_type)`: accepts any entity record that have at least the components of entity_type.
+* `an_entity_subset_ptr(entity_type)`: accepts any entity record that have at least the components of entity_type.
 
 Usage:
 ```lua
@@ -108,6 +114,22 @@ local Concepts.an_component
 
 ```lua
 local Concepts.an_component_ptr
+```
+
+
+
+### Concepts.an_system
+
+```lua
+local Concepts.an_system
+```
+
+
+
+### Concepts.an_system_ptr
+
+```lua
+local Concepts.an_system_ptr
 ```
 
 

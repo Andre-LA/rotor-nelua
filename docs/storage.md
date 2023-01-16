@@ -36,7 +36,7 @@ the storage type
 ### storage:push
 
 ```lua
-function storage:push(value: T): (boolean, GenIdx, *T)
+function storage:push(value: facultative(T)): (boolean, GenIdx, *T)
 ```
 
 Push a new entry on the storage on the next free slot, if no free slots are available,
@@ -45,6 +45,8 @@ index and `nilptr`.
 
 Otherwise, the entry will be inserted on the found free slot and this function will return `true`,
 the generational index of the used slot and a reference to the inserted entry.
+
+You can optionally pass a value to initialize this entry.
 
 ### storage:remove
 
