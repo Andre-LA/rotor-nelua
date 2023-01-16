@@ -62,7 +62,8 @@ local utils = require 'rotor.utils'
 
   ##[[
   --[=[
-  Preprocessor function, it returns a table with all the fields of a certain type.
+  Preprocessor function, it returns the field of an certain type, if the field isn't found, then it
+  returns nil.
 
   Usage:
   ```lua
@@ -99,11 +100,10 @@ local utils = require 'rotor.utils'
 
   --[=[
   Preprocessor function, it receives `filter`, which must be a table of types (whose should be
-  components, entities or generational indexes), then it will search for fields that have all
-  of the passed types as fields.
+  components, entities or generational indexes), then it will search for fields of the passed types.
 
-  If no fields with all the required types are found, this functions retuns `nil`, however, if
-  one or more fields are found, then it will return a table of these fields.
+  If a field isn't found for a certain type, then this function returns `nil`, otherwise, if all
+  fields are found, then it returns a table of these fields.
 
   Usage:
   ```lua
@@ -184,6 +184,7 @@ local utils = require 'rotor.utils'
     pilot: Character,
   })
 
+  -- note: mecha_pilot_field it's defined with the first element of find_children_fields.
   ## local mecha_pilot_field = Mecha.value:find_children_fields({Position.value, Person.value})[1]
   ## print( require'inspect' (mecha_pilot_field, {depth=1}) )
 
@@ -203,6 +204,19 @@ local utils = require 'rotor.utils'
       end
     end
     return fields
+  end
+
+  -- Preprocessor function that returns all component types of the entity type as a table.
+  function entityT.value:get_components()
+    local components = {}
+
+    for _, field in ipairs(self.fields) do
+      if field.type.is_component then
+        table.insert(components, field.type)
+      end
+    end
+    
+    return components
   end
   ]]
 
