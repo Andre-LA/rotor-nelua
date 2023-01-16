@@ -63,8 +63,10 @@ local GenIdx = require 'rotor.gen_idx'
 
   Otherwise, the entry will be inserted on the found free slot and this function will return `true`,
   the generational index of the used slot and a reference to the inserted entry.
+
+  You can optionally pass a value to initialize this entry.
   ]]
-  function storage:push(value: T): (boolean, GenIdx, *T)
+  function storage:push(value: facultative(T)): (boolean, GenIdx, *T)
     local available_found, available_idx = find_next_available(self, self.next_idx)
 
     if not available_found then
@@ -72,8 +74,13 @@ local GenIdx = require 'rotor.gen_idx'
       return false
     end
 
+    ## if value.type.is_niltype then
+      self.entries[available_idx] = {}
+    ## else
+      self.entries[available_idx] = value
+    ## end
+    
     self.next_idx = (available_idx + 1) % SIZE
-    self.entries[available_idx] = value
     self.unavailables[available_idx] = true
     self.generations[available_idx] = self.generations[available_idx] + 1
 
@@ -152,10 +159,7 @@ local GenIdx = require 'rotor.gen_idx'
       end
     ## end
     
-    self.entries = {}
-    self.unavailables = {}
-    self.generations = {}
-    self.next_idx = 0
+    $self = {}
   end
 
   ## return storage
