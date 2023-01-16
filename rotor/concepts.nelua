@@ -13,8 +13,12 @@ Simple concepts list:
 * `an_storage_ptr`: accepts any storage record pointer.
 * `an_component`: accepts any component record.
 * `an_component_ptr`: accepts any component record pointer.
+* `an_system`: accepts any system value.
+* `an_system_ptr`: accepts any system pointer.
 * `an_entity_with(filter)`: accepts any entity record that have the components passed on filter
 * `an_entity_ptr_with(filter)`: accepts any entity record that have the components passed on filter
+* `an_entity_subset(entity_type)`: accepts any entity record that have at least the components of entity_type.
+* `an_entity_subset_ptr(entity_type)`: accepts any entity record that have at least the components of entity_type.
 
 Usage:
 ```lua
@@ -46,16 +50,75 @@ local Concepts.an_storage_ptr = #[concept(function(attr) return attr.type.is_poi
 local Concepts.an_component     = #[concept(function(attr) return attr.type.is_component end)]#
 local Concepts.an_component_ptr = #[concept(function(attr) return attr.type.is_pointer and attr.type.subtype.is_component end)]#
 
+local Concepts.an_system     = #[concept(function(attr) return attr.type.is_system end)]#
+local Concepts.an_system_ptr = #[concept(function(attr) return attr.type.is_pointer and attr.type.subtype.is_system end)]#
+
 ##[[
 function Concepts.value.an_entity_with(filter)
   return concept(function(attr)
-    return attr.type.is_entity and attr.type:filter(filter) ~= nil
+    if not attr.type.is_entity then
+      return false, "the passed value isn't an entity type"
+    end
+
+    if not attr.type:filter(filter) then
+      return false, "the passed entity doesn't pass the filter"
+    end
+
+    return true
   end)
 end
 
 function Concepts.value.an_entity_ptr_with(filter)
   return concept(function(attr)
-    return attr.type.is_pointer and attr.type.subtype.is_entity and attr.type.subtype:filter(filter) ~= nil
+    if not attr.type.is_pointer then
+      return false, "the passed value isn't an entity pointer because it isn't a pointer"
+    end
+  
+    if not attr.type.subtype.is_entity then
+      return false, "the passed pointer value isn't an entity pointer"
+    end
+
+    if not attr.type.subtype:filter(filter) then
+      return false, "the passed entity pointer doesn't pass the filter"
+    end
+
+    return true
+  end)
+end
+
+function Concepts.value.an_entity_subset(entity)
+  static_assert(entity.is_entity, "the passed type on `an_entity_subset` isn't an entity")
+  
+  return concept(function(attr)
+    if not attr.type.is_entity then
+      return false, "the passed pointer value isn't an entity pointer"
+    end
+
+    if not attr.type:filter(entity:get_components()) then
+      return false, "the passed entity pointer doesn't have the required components"
+    end
+
+    return true
+  end)
+end
+
+function Concepts.value.an_entity_subset_ptr(entity)
+  static_assert(entity.is_entity, "the passed type on `an_entity_subset` isn't an entity")
+  
+  return concept(function(attr)
+    if not attr.type.is_pointer then
+      return false, "the passed value isn't an entity pointer"
+    end
+
+    if not attr.type.subtype.is_entity then
+      return false, "the passed pointer value isn't an entity pointer"
+    end
+
+    if not attr.type.subtype:filter(entity:get_components()) then
+      return false, "the passed entity pointer doesn't have the required components"
+    end
+
+    return true
   end)
 end
 ]]
